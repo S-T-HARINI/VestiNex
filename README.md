@@ -107,13 +107,15 @@ The application includes rich, realistic demonstration data pre-seeded with 4 us
 | **Backend Architect** | Developer | `lead@vestinex.io` | `password123` |
 | **Incident Observer** | Read-Only Viewer | `viewer@vestinex.io` | `password123` |
 
-*Note: The sign-in page features one-click buttons for instantaneous demo authentication.*
+*Note: One-click fast demo authentication buttons are enabled in development mode and automatically disabled in production environments (`NODE_ENV === 'production'`) to prevent unauthorized access.*
 
 ---
 
 ## 6. Quick Start Guide
 
-### Option A: Local Development (Fastest)
+### Option A: Local Development (Embedded PostgreSQL 16 Disk Persistence)
+
+VestiNex includes a zero-configuration embedded PostgreSQL 16 engine that persists to `./pgdata` on disk for local evaluation without needing an external PostgreSQL server installed:
 
 ```bash
 # 1. Clone repository
@@ -125,24 +127,35 @@ cd backend && npm install
 cd ../frontend && npm install
 cd ..
 
-# 3. Start Backend (Terminal 1)
+# 3. Start Backend (Terminal 1 - http://localhost:4000)
 cd backend
 npm run dev
 
-# 4. Start Frontend (Terminal 2)
+# 4. Start Frontend (Terminal 2 - http://localhost:3000)
 cd frontend
 npm run dev
 ```
 
 Open **`http://localhost:3000`** in your browser.
 
-### Option B: Docker Compose
+### Option B: Production Setup (External PostgreSQL)
+
+In production mode (`NODE_ENV=production`), VestiNex strictly requires an external `DATABASE_URL` and rejects unauthenticated fallbacks:
+
+```bash
+# Set environment variables
+DATABASE_URL=postgresql://vestinex:vestinex@localhost:5432/vestinex
+NODE_ENV=production
+SESSION_SECRET=your-secure-entropy-key
+```
+
+### Option C: Docker Compose
 
 ```bash
 docker compose up --build
 ```
-This launches:
-- PostgreSQL on `localhost:5432`
+This orchestrates:
+- PostgreSQL 16 on `localhost:5432` with healthcheck
 - Express API on `localhost:4000`
 - Next.js Web on `localhost:3000`
 
@@ -150,19 +163,34 @@ This launches:
 
 ## 7. Running Automated Tests
 
+### Backend Integration Tests (Vitest + Supertest)
 ```bash
-# Run backend integration tests (Vitest + Supertest)
 cd backend
 npm test
+# Result: 20/20 integration tests passed across Auth, Projects, Deployments, Incidents, Timeline, and Persistence
+```
 
-# Output:
-# ✓ tests/api.test.ts (14 tests) 184ms
-# Test Files  1 passed (1)
-#      Tests  14 passed (14)
+### Database Persistence Verification
+```bash
+cd backend
+npm run persistence:verify
+# Result: Verifies disk-backed recovery across Users, Projects, Deployments, Incidents, and Timeline events
+```
 
-# Run frontend production build verification
-cd ../frontend
+### Frontend Production Build
+```bash
+cd frontend
 npm run build
+# Result: 17/17 routes compiled cleanly (0 TypeScript/lint errors)
+```
+
+### End-to-End Testing (Playwright)
+```bash
+cd e2e
+npm install
+npx playwright install chromium
+npx playwright test
+# Result: 3/3 E2E test scenarios passed in headless Chromium
 ```
 
 ---

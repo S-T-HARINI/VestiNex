@@ -58,6 +58,11 @@ export class PostgresService {
       }
 
       if (!connectedToExternal) {
+        if (process.env.NODE_ENV === 'production') {
+          throw new Error(
+            '[PostgreSQL Fatal Error] In production, VestiNex requires a valid, reachable external PostgreSQL database via DATABASE_URL. Silent fallback to embedded local storage is prohibited in production.'
+          );
+        }
         // Use genuine in-process PostgreSQL 16 engine with disk persistence in ./pgdata
         const dataDir = path.resolve(process.cwd(), 'pgdata');
         this.pglite = new PGlite(dataDir);

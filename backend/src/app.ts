@@ -31,8 +31,10 @@ app.use(
     origin: (origin, callback) => {
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
+      } else if (process.env.NODE_ENV !== 'production') {
+        callback(null, true); // Permissive in local dev only
       } else {
-        callback(null, true); // Allow during local development
+        callback(new Error(`CORS blocked request from unauthorized origin: ${origin}`));
       }
     },
     credentials: true,

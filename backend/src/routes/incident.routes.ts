@@ -19,8 +19,8 @@ router.get('/projects/:projectId/incidents', authenticate, requireProjectRole('V
   try {
     const { severity, status } = req.query;
     const incidents = await incidentService.listIncidents(req.params.projectId as string, {
-      severity: severity as any,
-      status: status as any,
+      severity: (severity && severity !== 'undefined') ? severity as any : undefined,
+      status: (status && status !== 'undefined') ? status as any : undefined,
     });
     res.json({ success: true, incidents });
   } catch (err) {

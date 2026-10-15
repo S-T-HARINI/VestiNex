@@ -35,13 +35,25 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   return data;
 }
 
+function toQueryString(params?: Record<string, any>): string {
+  if (!params) return '';
+  const clean: Record<string, string> = {};
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && v !== '') {
+      clean[k] = String(v);
+    }
+  }
+  const q = new URLSearchParams(clean).toString();
+  return q ? `?${q}` : '';
+}
+
 export const api = {
   // Auth
   login: (data: any) => request<any>('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
   register: (data: any) => request<any>('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   logout: () => request<any>('/auth/logout', { method: 'POST' }),
   getMe: () => request<any>('/auth/me'),
-  updateProfile: (data: any) => request<any>('/auth/profile', { method: 'PATCH', body: JSON.stringify(data) }),
+  updateProfile: (data: any) => request<any>(`/auth/profile`, { method: 'PATCH', body: JSON.stringify(data) }),
   getUsers: () => request<any>('/auth/users'),
 
   // Projects
@@ -59,8 +71,7 @@ export const api = {
 
   // Deployments
   getDeployments: (projectId: string, filters?: { environment?: string; status?: string }) => {
-    const q = new URLSearchParams(filters as any).toString();
-    return request<any>(`/projects/${projectId}/deployments${q ? `?${q}` : ''}`);
+    return request<any>(`/projects/${projectId}/deployments${toQueryString(filters)}`);
   },
   getDeployment: (id: string) => request<any>(`/deployments/${id}`),
   createDeployment: (projectId: string, data: any) => request<any>(`/projects/${projectId}/deployments`, { method: 'POST', body: JSON.stringify(data) }),
@@ -74,8 +85,7 @@ export const api = {
 
   // Incidents
   getIncidents: (projectId: string, filters?: { severity?: string; status?: string }) => {
-    const q = new URLSearchParams(filters as any).toString();
-    return request<any>(`/projects/${projectId}/incidents${q ? `?${q}` : ''}`);
+    return request<any>(`/projects/${projectId}/incidents${toQueryString(filters)}`);
   },
   getIncident: (id: string) => request<any>(`/incidents/${id}`),
   createIncident: (projectId: string, data: any) => request<any>(`/projects/${projectId}/incidents`, { method: 'POST', body: JSON.stringify(data) }),
@@ -93,13 +103,11 @@ export const api = {
 
   // Timeline & Dashboard
   getProjectTimeline: (projectId: string, filters?: { type?: string; outOfOrderOnly?: boolean; delayedOnly?: boolean }) => {
-    const q = new URLSearchParams(filters as any).toString();
-    return request<any>(`/projects/${projectId}/timeline${q ? `?${q}` : ''}`);
+    return request<any>(`/projects/${projectId}/timeline${toQueryString(filters)}`);
   },
   getProjectDashboard: (projectId: string) => request<any>(`/projects/${projectId}/dashboard`),
   getGlobalOverview: () => request<any>('/dashboard/overview'),
   getAuditLogs: (filters?: { entityType?: string; entityId?: string }) => {
-    const q = new URLSearchParams(filters as any).toString();
-    return request<any>(`/dashboard/audit${q ? `?${q}` : ''}`);
+    return request<any>(`/dashboard/audit${toQueryString(filters)}`);
   },
 };
