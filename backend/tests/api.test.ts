@@ -296,4 +296,54 @@ describe('VestiNex Backend API Integration Tests', () => {
     expect(memberRes.status).toBe(403);
     expect(memberRes.body.success).toBe(false);
   });
+
+  // 19. IDOR Prevention: Non-member cannot access or mutate incident
+  it('Enforces IDOR prevention: non-member cannot access or mutate incident', async () => {
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({
+        email: 'viewer@vestinex.io',
+        password: 'password123',
+      });
+    const viewerCookie = loginRes.headers['set-cookie'][0];
+
+    // Non-member trying to GET incident directly
+    const getRes = await request(app)
+      .get(`/api/incidents/${createdIncidentId}`)
+      .set('Cookie', viewerCookie);
+    expect(getRes.status).toBe(403);
+    expect(getRes.body.error).toContain('not a member of the project');
+
+    // Non-member trying to PATCH incident directly
+    const patchRes = await request(app)
+      .patch(`/api/incidents/${createdIncidentId}`)
+      .set('Cookie', viewerCookie)
+      .send({ title: 'Hacked Title' });
+    expect(patchRes.status).toBe(403);
+  });
+
+  // 20. IDOR Prevention: Non-member cannot access or mutate deployment
+  it('Enforces IDOR prevention: non-member cannot access or mutate deployment', async () => {
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({
+        email: 'viewer@vestinex.io',
+        password: 'password123',
+      });
+    const viewerCookie = loginRes.headers['set-cookie'][0];
+
+    // Non-member trying to GET deployment directly
+    const getRes = await request(app)
+      .get(`/api/deployments/${createdDeploymentId}`)
+      .set('Cookie', viewerCookie);
+    expect(getRes.status).toBe(403);
+    expect(getRes.body.error).toContain('not a member of the project');
+
+    // Non-member trying to update deployment status
+    const statusRes = await request(app)
+      .patch(`/api/deployments/${createdDeploymentId}/status`)
+      .set('Cookie', viewerCookie)
+      .send({ status: 'FAILED' });
+    expect(statusRes.status).toBe(403);
+  });
 });

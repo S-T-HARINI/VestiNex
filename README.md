@@ -36,7 +36,7 @@ When modern distributed software fails in production, development and SRE teams 
 | **Validation** | Zod 3.24 | Schema validation on 100% of incoming request payloads |
 | **Database** | PostgreSQL 16 + Prisma ORM 5.22 | 13 relational models, Prisma DDL migrations, persistent disk storage (`./pgdata`), constraints, indexes, and transactions |
 | **Authentication**| Sessions + bcryptjs (Salt rounds: 10) | `httpOnly`, `sameSite: 'lax'` session cookies with session regeneration |
-| **Testing** | Vitest + Supertest + Playwright | 18 automated integration tests passing in <1s; end-to-end browser workflows |
+| **Testing** | Vitest + Supertest + Playwright | 20 automated integration tests passing in ~1s; end-to-end browser workflows |
 | **DevOps** | Docker & Docker Compose | Multi-container setup (Postgres + Express API + Next.js web) |
 
 ---

@@ -32,7 +32,7 @@ router.post('/', authenticate, validate(createProjectSchema), async (req: Reques
 // Get project details
 router.get('/:id', authenticate, requireProjectRole('VIEWER'), async (req: Request, res: Response, next) => {
   try {
-    const project = await projectService.getProject(req.user!.id, req.params.id);
+    const project = await projectService.getProject(req.user!.id, req.params.id as string);
     res.json({ success: true, project });
   } catch (err) {
     next(err);
@@ -42,7 +42,7 @@ router.get('/:id', authenticate, requireProjectRole('VIEWER'), async (req: Reque
 // Update project
 router.patch('/:id', authenticate, requireProjectRole('ADMIN'), validate(updateProjectSchema), async (req: Request, res: Response, next) => {
   try {
-    const project = await projectService.updateProject(req.user!.id, req.params.id, req.body);
+    const project = await projectService.updateProject(req.user!.id, req.params.id as string, req.body);
     res.json({ success: true, project });
   } catch (err) {
     next(err);
@@ -52,7 +52,7 @@ router.patch('/:id', authenticate, requireProjectRole('ADMIN'), validate(updateP
 // Archive project
 router.post('/:id/archive', authenticate, requireProjectRole('OWNER'), async (req: Request, res: Response, next) => {
   try {
-    const project = await projectService.archiveProject(req.user!.id, req.params.id);
+    const project = await projectService.archiveProject(req.user!.id, req.params.id as string);
     res.json({ success: true, project });
   } catch (err) {
     next(err);
@@ -62,7 +62,7 @@ router.post('/:id/archive', authenticate, requireProjectRole('OWNER'), async (re
 // Get members
 router.get('/:id/members', authenticate, requireProjectRole('VIEWER'), async (req: Request, res: Response, next) => {
   try {
-    const members = await projectService.getMembers(req.params.id);
+    const members = await projectService.getMembers(req.params.id as string);
     res.json({ success: true, members });
   } catch (err) {
     next(err);
@@ -72,7 +72,7 @@ router.get('/:id/members', authenticate, requireProjectRole('VIEWER'), async (re
 // Add member
 router.post('/:id/members', authenticate, requireProjectRole('ADMIN'), validate(addMemberSchema), async (req: Request, res: Response, next) => {
   try {
-    const member = await projectService.addMember(req.user!.id, req.params.id, req.body.email, req.body.role);
+    const member = await projectService.addMember(req.user!.id, req.params.id as string, req.body.email, req.body.role);
     res.status(201).json({ success: true, member });
   } catch (err) {
     next(err);
@@ -82,7 +82,7 @@ router.post('/:id/members', authenticate, requireProjectRole('ADMIN'), validate(
 // Update member role
 router.patch('/:id/members/:userId', authenticate, requireProjectRole('OWNER'), validate(updateMemberRoleSchema), async (req: Request, res: Response, next) => {
   try {
-    const member = await projectService.updateMemberRole(req.user!.id, req.params.id, req.params.userId, req.body.role);
+    const member = await projectService.updateMemberRole(req.user!.id, req.params.id as string, req.params.userId as string, req.body.role);
     res.json({ success: true, member });
   } catch (err) {
     next(err);
@@ -92,8 +92,8 @@ router.patch('/:id/members/:userId', authenticate, requireProjectRole('OWNER'), 
 // Remove member
 router.delete('/:id/members/:userId', authenticate, requireProjectRole('ADMIN'), async (req: Request, res: Response, next) => {
   try {
-    const result = await projectService.removeMember(req.user!.id, req.params.id, req.params.userId);
-    res.json({ success: true, ...result });
+    const result = await projectService.removeMember(req.user!.id, req.params.id as string, req.params.userId as string);
+    res.json(result);
   } catch (err) {
     next(err);
   }
@@ -103,7 +103,7 @@ router.delete('/:id/members/:userId', authenticate, requireProjectRole('ADMIN'),
 router.get('/:id/timeline', authenticate, requireProjectRole('VIEWER'), async (req: Request, res: Response, next) => {
   try {
     const { type, outOfOrderOnly, delayedOnly } = req.query;
-    const events = await timelineService.getProjectTimeline(req.params.id, {
+    const events = await timelineService.getProjectTimeline(req.params.id as string, {
       type: type as any,
       outOfOrderOnly: outOfOrderOnly === 'true',
       delayedOnly: delayedOnly === 'true',
@@ -117,7 +117,7 @@ router.get('/:id/timeline', authenticate, requireProjectRole('VIEWER'), async (r
 // Project Dashboard Metrics
 router.get('/:id/dashboard', authenticate, requireProjectRole('VIEWER'), async (req: Request, res: Response, next) => {
   try {
-    const data = await dashboardService.getProjectDashboard(req.params.id);
+    const data = await dashboardService.getProjectDashboard(req.params.id as string);
     res.json({ success: true, ...data });
   } catch (err) {
     next(err);

@@ -2,11 +2,16 @@ import { Request, Response, NextFunction } from 'express';
 import { authService } from '../services/auth.service';
 import { User } from '../types';
 
+declare module 'express-session' {
+  interface SessionData {
+    userId?: string;
+  }
+}
+
 declare global {
   namespace Express {
     interface Request {
       user?: User;
-      session?: any;
     }
   }
 }

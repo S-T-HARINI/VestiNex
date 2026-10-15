@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { projectService } from '../services/project.service';
+import { pgDb } from '../lib/postgres';
 import { ProjectRole } from '../types';
 
 export const requireSystemRole = (role: 'ADMIN') => {
@@ -47,6 +48,150 @@ export const requireProjectRole = (minimumRole: ProjectRole) => {
         res.status(403).json({
           success: false,
           error: 'Access denied: You are not a member of this project.',
+        });
+        return;
+      }
+
+      if (roleHierarchy[userRole] < roleHierarchy[minimumRole]) {
+        res.status(403).json({
+          success: false,
+          error: `Insufficient permissions. Requires minimum role: ${minimumRole}. Your role: ${userRole}.`,
+        });
+        return;
+      }
+
+      next();
+    } catch (err) {
+      next(err);
+    }
+  };
+};
+
+export const requireIncidentRole = (minimumRole: ProjectRole) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
+      }
+      if (req.user.role === 'ADMIN') return next();
+
+      const incidentId = req.params.id || req.params.incidentId;
+      if (!incidentId) {
+        res.status(400).json({ success: false, error: 'Incident ID is missing from request context' });
+        return;
+      }
+
+      const rows = await pgDb.query<{ project_id: string }>(
+        'SELECT project_id FROM incidents WHERE id = $1 LIMIT 1;',
+        [incidentId]
+      );
+      if (rows.length === 0) {
+        res.status(404).json({ success: false, error: 'Incident not found' });
+        return;
+      }
+
+      const userRole = await projectService.getMemberRole(req.user.id, rows[0].project_id);
+      if (!userRole) {
+        res.status(403).json({
+          success: false,
+          error: 'Access denied: You are not a member of the project for this incident.',
+        });
+        return;
+      }
+
+      if (roleHierarchy[userRole] < roleHierarchy[minimumRole]) {
+        res.status(403).json({
+          success: false,
+          error: `Insufficient permissions. Requires minimum role: ${minimumRole}. Your role: ${userRole}.`,
+        });
+        return;
+      }
+
+      next();
+    } catch (err) {
+      next(err);
+    }
+  };
+};
+
+export const requireDeploymentRole = (minimumRole: ProjectRole) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
+      }
+      if (req.user.role === 'ADMIN') return next();
+
+      const deploymentId = req.params.id || req.params.deploymentId;
+      if (!deploymentId) {
+        res.status(400).json({ success: false, error: 'Deployment ID is missing from request context' });
+        return;
+      }
+
+      const rows = await pgDb.query<{ project_id: string }>(
+        'SELECT project_id FROM deployments WHERE id = $1 LIMIT 1;',
+        [deploymentId]
+      );
+      if (rows.length === 0) {
+        res.status(404).json({ success: false, error: 'Deployment not found' });
+        return;
+      }
+
+      const userRole = await projectService.getMemberRole(req.user.id, rows[0].project_id);
+      if (!userRole) {
+        res.status(403).json({
+          success: false,
+          error: 'Access denied: You are not a member of the project for this deployment.',
+        });
+        return;
+      }
+
+      if (roleHierarchy[userRole] < roleHierarchy[minimumRole]) {
+        res.status(403).json({
+          success: false,
+          error: `Insufficient permissions. Requires minimum role: ${minimumRole}. Your role: ${userRole}.`,
+        });
+        return;
+      }
+
+      next();
+    } catch (err) {
+      next(err);
+    }
+  };
+};
+
+export const requireCodeChangeRole = (minimumRole: ProjectRole) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
+      }
+      if (req.user.role === 'ADMIN') return next();
+
+      const codeChangeId = req.params.id;
+      if (!codeChangeId) {
+        res.status(400).json({ success: false, error: 'Code change ID is missing from request context' });
+        return;
+      }
+
+      const rows = await pgDb.query<{ project_id: string }>(
+        'SELECT project_id FROM code_changes WHERE id = $1 LIMIT 1;',
+        [codeChangeId]
+      );
+      if (rows.length === 0) {
+        res.status(404).json({ success: false, error: 'Code change not found' });
+        return;
+      }
+
+      const userRole = await projectService.getMemberRole(req.user.id, rows[0].project_id);
+      if (!userRole) {
+        res.status(403).json({
+          success: false,
+          error: 'Access denied: You are not a member of the project for this code change.',
         });
         return;
       }

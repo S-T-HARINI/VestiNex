@@ -1,3 +1,11 @@
+import 'express-session';
+
+declare module 'express-session' {
+  interface SessionData {
+    userId?: string;
+  }
+}
+
 export type UserRole = 'ADMIN' | 'USER';
 export type ProjectRole = 'OWNER' | 'ADMIN' | 'DEVELOPER' | 'VIEWER';
 export type ProjectStatus = 'ACTIVE' | 'ARCHIVED';
