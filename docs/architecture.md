@@ -11,18 +11,21 @@ VestiNex is an incident intelligence and deployment monitoring platform designed
 │               Frontend: Next.js App Router             │
 │   (Tailwind CSS, shadcn/ui, Recharts, Tabular Fonts)   │
 └──────────────────────────┬─────────────────────────────┘
-                           │ HTTP /api/v1 (Cookies + Session)
+                           │ HTTP /api/* (Cookies + Session)
 ┌──────────────────────────▼─────────────────────────────┐
 │               Backend: Express.js + TypeScript          │
 │   (Zod Validation, Session Auth, RBAC, Rate Limiting)  │
 └──────────────────────────┬─────────────────────────────┘
                            │
-       ┌───────────────────┴───────────────────┐
-       ▼                                       ▼
-┌───────────────────────┐            ┌──────────────────────┐
-│  Prisma ORM + Postgres│            │ In-Memory Data Store │
-│  (Database & Indexes) │            │ (Demo / Test Engine) │
-└───────────────────────┘            └──────────────────────┘
+        ┌──────────────────┴───────────────────┐
+        ▼                                       ▼
+┌───────────────────────────┐       ┌───────────────────────────┐
+│ External PostgreSQL Server│       │ In-Process PostgreSQL 16  │
+│ (Production Docker/Cloud) │       │ (PGlite Engine on Disk)   │
+└───────────────────────────┘       └───────────────────────────┘
+               │                                   │
+               └─────────► Prisma DDL ◄────────────┘
+                     (Tables, Enums, Indexes)
 ```
 
 ---
@@ -64,10 +67,12 @@ VestiNex correlates incidents with candidate deployments without falling into th
 
 ---
 
-## 5. Security & Session Integrity
+## 5. Security & Data Integrity
 
 - **Password Storage**: Hashed using `bcryptjs` with salt rounds = 10.
 - **Session Security**: Session cookies with `httpOnly`, `sameSite: 'lax'`, and `secure` in production.
 - **Session Fixation Mitigation**: Session regeneration on login.
 - **Input Sanitization**: Strict Zod schemas on every request payload.
 - **Rate Limiting**: `express-rate-limit` prevents brute-force login attempts (20 requests per 15 min on auth routes).
+- **Idempotency & Conflict Handling**: Duplicate commit ingestion returns HTTP 409 Conflict. Simultaneous incident updates evaluate `expectedUpdatedAt` timestamps and reject stale collisions with HTTP 409 Conflict.
+- **Demo Access Guard**: Fast one-click credentials are strictly rendered in development mode (`process.env.NODE_ENV !== 'production'`).

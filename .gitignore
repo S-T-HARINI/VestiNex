@@ -36,8 +36,10 @@ ehthumbs.db
 # Docker
 docker-compose.override.yml
 
-# Prisma
+# Prisma & Database
 prisma/*.db
+pgdata/
+backend/pgdata/
 
 # Test coverage
 coverage/

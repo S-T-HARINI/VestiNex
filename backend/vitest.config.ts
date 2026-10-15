@@ -4,6 +4,12 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    testTimeout: 10000,
+    testTimeout: 25000,
+    pool: 'forks',
+    server: {
+      deps: {
+        external: ['@electric-sql/pglite'],
+      },
+    },
   },
 });

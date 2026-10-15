@@ -1,122 +1,151 @@
 import { v4 as uuidv4 } from 'uuid';
-import { db } from '../lib/store';
-import { Incident, IncidentSeverity, IncidentStatus, IncidentDeploymentLink, Comment, IncidentStatusHistory } from '../types';
+import { pgDb } from '../lib/postgres';
+import { Incident, IncidentSeverity, IncidentStatus, IncidentDeploymentLink, Comment } from '../types';
+import { AppError } from '../middleware/errorHandler';
 
 export class IncidentService {
   async listIncidents(projectId: string, filters?: { severity?: IncidentSeverity; status?: IncidentStatus }) {
-    let list = db.incidents.filter((i) => i.projectId === projectId);
+    let sql = `
+      SELECT i.*,
+        u_rep.name as "reportedByName", u_rep.email as "reportedByEmail", u_rep.avatar_url as "reportedByAvatar",
+        u_ass.name as "assignedToName", u_ass.email as "assignedToEmail", u_ass.avatar_url as "assignedToAvatar",
+        (SELECT COUNT(*) FROM comments WHERE incident_id = i.id) as "commentCount",
+        (SELECT COUNT(*) FROM incident_deployment_links WHERE incident_id = i.id) as "linkedDeploymentCount"
+      FROM incidents i
+      LEFT JOIN users u_rep ON u_rep.id = i.reported_by_id
+      LEFT JOIN users u_ass ON u_ass.id = i.assigned_to_id
+      WHERE i.project_id = $1
+    `;
+    const params: any[] = [projectId];
 
     if (filters?.severity) {
-      list = list.filter((i) => i.severity === filters.severity);
+      params.push(filters.severity);
+      sql += ` AND i.severity = $${params.length}`;
     }
     if (filters?.status) {
-      list = list.filter((i) => i.status === filters.status);
+      params.push(filters.status);
+      sql += ` AND i.status = $${params.length}`;
     }
 
-    list.sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime());
+    sql += ' ORDER BY i.occurred_at DESC;';
 
-    return list.map((inc) => {
-      const reporter = db.findUserById(inc.reportedById);
-      const assignee = inc.assignedToId ? db.findUserById(inc.assignedToId) : null;
-      const commentCount = db.comments.filter((c) => c.incidentId === inc.id).length;
-      const linkedDeployments = db.incidentDeploymentLinks.filter((l) => l.incidentId === inc.id);
-
-      return {
-        ...inc,
-        reportedBy: reporter ? { id: reporter.id, name: reporter.name, email: reporter.email, avatarUrl: reporter.avatarUrl } : null,
-        assignedTo: assignee ? { id: assignee.id, name: assignee.name, email: assignee.email, avatarUrl: assignee.avatarUrl } : null,
-        commentCount,
-        linkedDeploymentCount: linkedDeployments.length,
-      };
-    });
+    const rows = await pgDb.query<any>(sql, params);
+    return rows.map((inc) => ({
+      id: inc.id,
+      projectId: inc.project_id,
+      title: inc.title,
+      description: inc.description,
+      severity: inc.severity,
+      status: inc.status,
+      reportedById: inc.reported_by_id,
+      assignedToId: inc.assigned_to_id,
+      resolvedAt: inc.resolved_at,
+      resolutionNote: inc.resolution_note,
+      occurredAt: inc.occurred_at,
+      ingestedAt: inc.ingested_at,
+      createdAt: inc.created_at,
+      updatedAt: inc.updated_at,
+      reportedBy: inc.reported_by_id
+        ? { id: inc.reported_by_id, name: inc.reportedByName, email: inc.reportedByEmail, avatarUrl: inc.reportedByAvatar }
+        : null,
+      assignedTo: inc.assigned_to_id
+        ? { id: inc.assigned_to_id, name: inc.assignedToName, email: inc.assignedToEmail, avatarUrl: inc.assignedToAvatar }
+        : null,
+      commentCount: parseInt(inc.commentCount, 10) || 0,
+      linkedDeploymentCount: parseInt(inc.linkedDeploymentCount, 10) || 0,
+    }));
   }
 
   async getIncident(id: string) {
-    const inc = db.incidents.find((i) => i.id === id);
-    if (!inc) throw new Error('Incident not found');
+    const incRows = await pgDb.query<any>(
+      `SELECT i.*,
+        u_rep.name as "reportedByName", u_rep.email as "reportedByEmail", u_rep.avatar_url as "reportedByAvatar",
+        u_ass.name as "assignedToName", u_ass.email as "assignedToEmail", u_ass.avatar_url as "assignedToAvatar"
+       FROM incidents i
+       LEFT JOIN users u_rep ON u_rep.id = i.reported_by_id
+       LEFT JOIN users u_ass ON u_ass.id = i.assigned_to_id
+       WHERE i.id = $1 LIMIT 1;`,
+      [id]
+    );
 
-    const reporter = db.findUserById(inc.reportedById);
-    const assignee = inc.assignedToId ? db.findUserById(inc.assignedToId) : null;
+    if (incRows.length === 0) throw new AppError('Incident not found', 404);
+    const inc = incRows[0];
 
-    const comments = db.comments
-      .filter((c) => c.incidentId === id)
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-      .map((c) => {
-        const u = db.findUserById(c.userId);
-        return {
-          ...c,
-          user: u ? { id: u.id, name: u.name, email: u.email, avatarUrl: u.avatarUrl } : null,
-        };
-      });
+    // Comments
+    const commentRows = await pgDb.query<any>(
+      `SELECT c.*, u.name as "userName", u.email as "userEmail", u.avatar_url as "userAvatar"
+       FROM comments c
+       INNER JOIN users u ON u.id = c.user_id
+       WHERE c.incident_id = $1
+       ORDER BY c.created_at ASC;`,
+      [id]
+    );
 
-    const statusHistory = db.incidentStatusHistories
-      .filter((h) => h.incidentId === id)
-      .sort((a, b) => new Date(a.changedAt).getTime() - new Date(b.changedAt).getTime())
-      .map((h) => {
-        const u = h.changedById ? db.findUserById(h.changedById) : null;
-        return {
-          ...h,
-          changedBy: u ? { id: u.id, name: u.name, email: u.email } : null,
-        };
-      });
+    // Status history
+    const historyRows = await pgDb.query<any>(
+      `SELECT ish.*, u.name as "changedByName", u.email as "changedByEmail"
+       FROM incident_status_history ish
+       LEFT JOIN users u ON u.id = ish.changed_by_id
+       WHERE ish.incident_id = $1
+       ORDER BY ish.changed_at ASC;`,
+      [id]
+    );
 
-    const deploymentLinks = db.incidentDeploymentLinks
-      .filter((l) => l.incidentId === id)
-      .map((l) => {
-        const dep = db.deployments.find((d) => d.id === l.deploymentId);
-        const linker = l.linkedById ? db.findUserById(l.linkedById) : null;
-        return {
-          ...l,
-          deployment: dep,
-          linkedBy: linker ? { id: linker.id, name: linker.name } : null,
-        };
-      });
+    // Deployment links
+    const linkRows = await pgDb.query<any>(
+      `SELECT idl.*, d.version, d.environment, d.commit_sha as "commitSha", d.branch,
+              u.name as "linkedByName"
+       FROM incident_deployment_links idl
+       INNER JOIN deployments d ON d.id = idl.deployment_id
+       LEFT JOIN users u ON u.id = idl.linked_by_id
+       WHERE idl.incident_id = $1;`,
+      [id]
+    );
 
-    // Calculate candidate deployments for correlation investigation (deployments completed within 72h prior to incident)
-    const suggestedCorrelations = this.computeSuggestedCorrelations(inc);
+    // Compute candidate correlations
+    const candidateDeployments = await pgDb.query<any>(
+      'SELECT * FROM deployments WHERE project_id = $1 ORDER BY occurred_at DESC;',
+      [inc.project_id]
+    );
 
-    return {
-      ...inc,
-      reportedBy: reporter ? { id: reporter.id, name: reporter.name, email: reporter.email, avatarUrl: reporter.avatarUrl } : null,
-      assignedTo: assignee ? { id: assignee.id, name: assignee.name, email: assignee.email, avatarUrl: assignee.avatarUrl } : null,
-      comments,
-      statusHistory,
-      deploymentLinks,
-      suggestedCorrelations,
-    };
-  }
+    const linkedDepIds = new Set(linkRows.map((l: any) => l.deployment_id));
+    const incOccurredTime = new Date(inc.occurred_at).getTime();
 
-  computeSuggestedCorrelations(incident: Incident) {
-    const incTime = new Date(incident.occurredAt).getTime();
-    const candidateDeployments = db.deployments.filter((d) => d.projectId === incident.projectId);
-
-    return candidateDeployments
-      .map((dep) => {
-        const depTime = new Date(dep.completedAt || dep.occurredAt).getTime();
-        const diffMs = incTime - depTime;
+    const suggestedCorrelations = candidateDeployments
+      .map((dep: any) => {
+        const depTime = new Date(dep.completed_at || dep.occurred_at).getTime();
+        const diffMs = incOccurredTime - depTime;
         const diffMinutes = Math.round(diffMs / 60000);
 
-        // Already linked?
-        const isLinked = db.incidentDeploymentLinks.some((l) => l.incidentId === incident.id && l.deploymentId === dep.id);
+        const isLinked = linkedDepIds.has(dep.id);
 
         let confidence: 'high' | 'medium' | 'low' = 'low';
         let rationale = '';
 
         if (diffMinutes >= 0 && diffMinutes <= 120) {
           confidence = 'high';
-          rationale = `Temporal proximity: Deployment finished ${diffMinutes} minutes before incident occurred. High correlation potential. Note: Correlation provides investigative signal; causation requires diff verification.`;
+          rationale = `Temporal proximity: Deployment finished ${diffMinutes}m before incident onset. High investigative priority. Note: Correlation provides investigative signal; causation requires commit diff verification.`;
         } else if (diffMinutes > 120 && diffMinutes <= 1440) {
           confidence = 'medium';
-          rationale = `Temporal proximity: Deployment finished ${Math.round(diffMinutes / 60)} hours before incident onset. Intermediate investigative lead.`;
+          rationale = `Temporal proximity: Deployment completed ${Math.round(diffMinutes / 60)}h before incident onset. Intermediate investigative lead.`;
         } else if (diffMinutes > 1440 && diffMinutes <= 4320) {
           confidence = 'low';
-          rationale = `Temporal distance: Deployment finished ${Math.round(diffMinutes / 1440)} days before incident. Lower baseline probability unless delayed cron or latent trigger.`;
+          rationale = `Temporal distance: Deployment finished ${Math.round(diffMinutes / 1440)}d before incident. Lower baseline probability unless delayed trigger.`;
         } else {
-          return null; // Deployment occurred after incident or too far in past
+          return null;
         }
 
         return {
-          deployment: dep,
+          deployment: {
+            id: dep.id,
+            version: dep.version,
+            environment: dep.environment,
+            commitSha: dep.commit_sha,
+            branch: dep.branch,
+            occurredAt: dep.occurred_at,
+            completedAt: dep.completed_at,
+            releaseNotes: dep.release_notes,
+          },
           confidence,
           diffMinutes,
           rationale,
@@ -125,6 +154,65 @@ export class IncidentService {
       })
       .filter(Boolean)
       .sort((a: any, b: any) => a.diffMinutes - b.diffMinutes);
+
+    return {
+      id: inc.id,
+      projectId: inc.project_id,
+      title: inc.title,
+      description: inc.description,
+      severity: inc.severity,
+      status: inc.status,
+      reportedById: inc.reported_by_id,
+      assignedToId: inc.assigned_to_id,
+      resolvedAt: inc.resolved_at,
+      resolutionNote: inc.resolution_note,
+      occurredAt: inc.occurred_at,
+      ingestedAt: inc.ingested_at,
+      createdAt: inc.created_at,
+      updatedAt: inc.updated_at,
+      reportedBy: inc.reported_by_id
+        ? { id: inc.reported_by_id, name: inc.reportedByName, email: inc.reportedByEmail, avatarUrl: inc.reportedByAvatar }
+        : null,
+      assignedTo: inc.assigned_to_id
+        ? { id: inc.assigned_to_id, name: inc.assignedToName, email: inc.assignedToEmail, avatarUrl: inc.assignedToAvatar }
+        : null,
+      comments: commentRows.map((c) => ({
+        id: c.id,
+        incidentId: c.incident_id,
+        userId: c.user_id,
+        content: c.content,
+        createdAt: c.created_at,
+        updatedAt: c.updated_at,
+        user: { id: c.user_id, name: c.userName, email: c.userEmail, avatarUrl: c.userAvatar },
+      })),
+      statusHistory: historyRows.map((h) => ({
+        id: h.id,
+        incidentId: h.incident_id,
+        fromStatus: h.from_status,
+        toStatus: h.to_status,
+        changedById: h.changed_by_id,
+        note: h.note,
+        changedAt: h.changed_at,
+        changedBy: h.changed_by_id ? { id: h.changed_by_id, name: h.changedByName, email: h.changedByEmail } : null,
+      })),
+      deploymentLinks: linkRows.map((l) => ({
+        id: l.id,
+        incidentId: l.incident_id,
+        deploymentId: l.deployment_id,
+        confidence: l.confidence,
+        note: l.note,
+        createdAt: l.created_at,
+        deployment: {
+          id: l.deployment_id,
+          version: l.version,
+          environment: l.environment,
+          commitSha: l.commitSha,
+          branch: l.branch,
+        },
+        linkedBy: l.linked_by_id ? { id: l.linked_by_id, name: l.linkedByName } : null,
+      })),
+      suggestedCorrelations,
+    };
   }
 
   async createIncident(
@@ -142,87 +230,115 @@ export class IncidentService {
       linkNote?: string;
     }
   ) {
-    const project = db.findProjectById(projectId);
-    if (!project) throw new Error('Project not found');
+    const projRows = await pgDb.query('SELECT id FROM projects WHERE id = $1 LIMIT 1;', [projectId]);
+    if (projRows.length === 0) throw new AppError('Project not found', 404);
 
     const now = new Date();
     const occurredAt = data.occurredAt ? new Date(data.occurredAt) : now;
     const initialStatus = data.status || 'OPEN';
+    const incId = `inc_${uuidv4().substring(0, 8)}`;
+    const historyId = `ish_${uuidv4().substring(0, 8)}`;
+    const eventId = `tle_${uuidv4().substring(0, 8)}`;
+    const auditId = `aud_${uuidv4().substring(0, 8)}`;
 
-    const incident: Incident = {
-      id: `inc_${uuidv4().substring(0, 8)}`,
-      projectId,
-      title: data.title,
-      description: data.description || null,
-      severity: data.severity,
-      status: initialStatus,
-      reportedById: userId,
-      assignedToId: data.assignedToId || null,
-      resolvedAt: initialStatus === 'RESOLVED' || initialStatus === 'CLOSED' ? now : null,
-      resolutionNote: null,
-      occurredAt,
-      ingestedAt: now,
-      createdAt: now,
-      updatedAt: now,
-    };
+    return await pgDb.transaction(async (client) => {
+      // 1. Insert Incident
+      await client.query(
+        `INSERT INTO incidents (id, project_id, title, description, severity, status, reported_by_id, assigned_to_id, resolved_at, resolution_note, occurred_at, ingested_at, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);`,
+        [
+          incId,
+          projectId,
+          data.title,
+          data.description || null,
+          data.severity,
+          initialStatus,
+          userId,
+          data.assignedToId || null,
+          initialStatus === 'RESOLVED' || initialStatus === 'CLOSED' ? now : null,
+          null,
+          occurredAt,
+          now,
+          now,
+          now,
+        ]
+      );
 
-    db.incidents.push(incident);
+      // 2. Insert initial status history
+      await client.query(
+        `INSERT INTO incident_status_history (id, incident_id, from_status, to_status, changed_by_id, note, changed_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+        [historyId, incId, null, initialStatus, userId, 'Incident registered.', now]
+      );
 
-    // Initial status history
-    db.incidentStatusHistories.push({
-      id: `ish_${uuidv4().substring(0, 8)}`,
-      incidentId: incident.id,
-      fromStatus: null,
-      toStatus: initialStatus,
-      changedById: userId,
-      note: 'Incident registered.',
-      changedAt: now,
-    });
+      // 3. Link deployment if requested
+      if (data.linkedDeploymentId) {
+        await client.query(
+          `INSERT INTO incident_deployment_links (id, incident_id, deployment_id, confidence, linked_by_id, note, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+          [
+            `idl_${uuidv4().substring(0, 8)}`,
+            incId,
+            data.linkedDeploymentId,
+            data.linkConfidence || 'medium',
+            userId,
+            data.linkNote || 'Associated during incident creation.',
+            now,
+          ]
+        );
+      }
 
-    // Link deployment if provided
-    if (data.linkedDeploymentId) {
-      db.incidentDeploymentLinks.push({
-        id: `idl_${uuidv4().substring(0, 8)}`,
-        incidentId: incident.id,
-        deploymentId: data.linkedDeploymentId,
-        confidence: data.linkConfidence || 'medium',
-        linkedById: userId,
-        note: data.linkNote || 'Associated during incident creation.',
+      // 4. Create timeline event
+      await client.query(
+        `INSERT INTO timeline_events (id, project_id, type, title, description, metadata, entity_id, entity_type, occurred_at, ingested_at, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);`,
+        [
+          eventId,
+          projectId,
+          'INCIDENT_CREATED',
+          `${data.severity} Incident: ${data.title}`,
+          data.description || 'Incident reported.',
+          JSON.stringify({ severity: data.severity, status: initialStatus, assignedToId: data.assignedToId }),
+          incId,
+          'INCIDENT',
+          occurredAt,
+          now,
+          now,
+        ]
+      );
+
+      // 5. Create audit log
+      await client.query(
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+        [
+          auditId,
+          userId,
+          'INCIDENT_CREATE',
+          'INCIDENT',
+          incId,
+          JSON.stringify({ title: data.title, severity: data.severity, status: initialStatus }),
+          now,
+        ]
+      );
+
+      return {
+        id: incId,
+        projectId,
+        title: data.title,
+        description: data.description || null,
+        severity: data.severity,
+        status: initialStatus,
+        reportedById: userId,
+        assignedToId: data.assignedToId || null,
+        resolvedAt: null,
+        resolutionNote: null,
+        occurredAt,
+        ingestedAt: now,
         createdAt: now,
-      });
-    }
-
-    // Timeline event
-    db.timelineEvents.push({
-      id: `tle_${uuidv4().substring(0, 8)}`,
-      projectId,
-      type: 'INCIDENT_CREATED',
-      title: `${incident.severity} Incident: ${incident.title}`,
-      description: incident.description || 'Incident reported.',
-      metadata: {
-        severity: incident.severity,
-        status: incident.status,
-        assignedToId: incident.assignedToId,
-      },
-      entityId: incident.id,
-      entityType: 'INCIDENT',
-      occurredAt,
-      ingestedAt: now,
-      createdAt: now,
+        updatedAt: now,
+      };
     });
-
-    // Audit log
-    db.auditLogs.push({
-      id: `aud_${uuidv4().substring(0, 8)}`,
-      userId,
-      action: 'INCIDENT_CREATE',
-      entityType: 'INCIDENT',
-      entityId: incident.id,
-      changes: { title: incident.title, severity: incident.severity, status: incident.status },
-      createdAt: now,
-    });
-
-    return incident;
   }
 
   async updateIncident(
@@ -233,28 +349,55 @@ export class IncidentService {
       description: string | null;
       severity: IncidentSeverity;
       assignedToId: string | null;
+      expectedUpdatedAt?: string;
     }>
   ) {
-    const inc = db.incidents.find((i) => i.id === id);
-    if (!inc) throw new Error('Incident not found');
+    const incRows = await pgDb.query<any>('SELECT * FROM incidents WHERE id = $1 LIMIT 1;', [id]);
+    if (incRows.length === 0) throw new AppError('Incident not found', 404);
+    const inc = incRows[0];
 
-    if (data.title !== undefined) inc.title = data.title;
-    if (data.description !== undefined) inc.description = data.description;
-    if (data.severity !== undefined) inc.severity = data.severity;
-    if (data.assignedToId !== undefined) inc.assignedToId = data.assignedToId;
-    inc.updatedAt = new Date();
+    // Concurrency check for simultaneous updates
+    if (data.expectedUpdatedAt) {
+      const currentEpoch = new Date(inc.updated_at).getTime();
+      const expectedEpoch = new Date(data.expectedUpdatedAt).getTime();
+      if (Math.abs(currentEpoch - expectedEpoch) > 1000) {
+        throw new AppError(
+          'Concurrent edit conflict: The incident was updated by another team member. Please refresh and review the latest changes.',
+          409,
+          'CONFLICT'
+        );
+      }
+    }
 
-    db.auditLogs.push({
-      id: `aud_${uuidv4().substring(0, 8)}`,
-      userId,
-      action: 'INCIDENT_UPDATE',
-      entityType: 'INCIDENT',
-      entityId: inc.id,
-      changes: data,
-      createdAt: new Date(),
+    const now = new Date();
+    const updatedTitle = data.title !== undefined ? data.title : inc.title;
+    const updatedDesc = data.description !== undefined ? data.description : inc.description;
+    const updatedSeverity = data.severity !== undefined ? data.severity : inc.severity;
+    const updatedAssignee = data.assignedToId !== undefined ? data.assignedToId : inc.assigned_to_id;
+
+    return await pgDb.transaction(async (client) => {
+      await client.query(
+        `UPDATE incidents
+         SET title = $1, description = $2, severity = $3, assigned_to_id = $4, updated_at = $5
+         WHERE id = $6;`,
+        [updatedTitle, updatedDesc, updatedSeverity, updatedAssignee, now, id]
+      );
+
+      await client.query(
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+        [`aud_${uuidv4().substring(0, 8)}`, userId, 'INCIDENT_UPDATE', 'INCIDENT', id, JSON.stringify(data), now]
+      );
+
+      return {
+        ...inc,
+        title: updatedTitle,
+        description: updatedDesc,
+        severity: updatedSeverity,
+        assignedToId: updatedAssignee,
+        updatedAt: now,
+      };
     });
-
-    return inc;
   }
 
   async updateIncidentStatus(
@@ -262,230 +405,305 @@ export class IncidentService {
     id: string,
     newStatus: IncidentStatus,
     note?: string,
-    resolutionNote?: string
+    resolutionNote?: string,
+    expectedUpdatedAt?: string
   ) {
-    const inc = db.incidents.find((i) => i.id === id);
-    if (!inc) throw new Error('Incident not found');
+    const incRows = await pgDb.query<any>('SELECT * FROM incidents WHERE id = $1 LIMIT 1;', [id]);
+    if (incRows.length === 0) throw new AppError('Incident not found', 404);
+    const inc = incRows[0];
+
+    // Concurrency detection for simultaneous incident updates
+    if (expectedUpdatedAt) {
+      const currentEpoch = new Date(inc.updated_at).getTime();
+      const expectedEpoch = new Date(expectedUpdatedAt).getTime();
+      if (Math.abs(currentEpoch - expectedEpoch) > 1000) {
+        throw new AppError(
+          'Concurrent edit conflict: The incident was updated by another team member. Please refresh and review the latest changes.',
+          409,
+          'CONFLICT'
+        );
+      }
+    }
 
     const fromStatus = inc.status;
-    if (fromStatus === newStatus && !resolutionNote) {
-      return inc;
-    }
-
     const now = new Date();
-    inc.status = newStatus;
-    inc.updatedAt = now;
+    const isResolved = newStatus === 'RESOLVED' || newStatus === 'CLOSED';
+    const resolvedAt = isResolved ? (inc.resolved_at || now) : null;
+    const finalResolutionNote = resolutionNote || inc.resolution_note || null;
 
-    if (newStatus === 'RESOLVED' || newStatus === 'CLOSED') {
-      if (!inc.resolvedAt) inc.resolvedAt = now;
-      if (resolutionNote) inc.resolutionNote = resolutionNote;
-    } else {
-      inc.resolvedAt = null;
-    }
+    const historyId = `ish_${uuidv4().substring(0, 8)}`;
+    const eventId = `tle_${uuidv4().substring(0, 8)}`;
+    const auditId = `aud_${uuidv4().substring(0, 8)}`;
 
-    // Record status history
-    db.incidentStatusHistories.push({
-      id: `ish_${uuidv4().substring(0, 8)}`,
-      incidentId: inc.id,
-      fromStatus,
-      toStatus: newStatus,
-      changedById: userId,
-      note: note || `Status transitioned to ${newStatus}`,
-      changedAt: now,
+    return await pgDb.transaction(async (client) => {
+      // 1. Update incident table
+      await client.query(
+        `UPDATE incidents
+         SET status = $1, resolved_at = $2, resolution_note = $3, updated_at = $4
+         WHERE id = $5;`,
+        [newStatus, resolvedAt, finalResolutionNote, now, id]
+      );
+
+      // 2. Insert into incident status history
+      await client.query(
+        `INSERT INTO incident_status_history (id, incident_id, from_status, to_status, changed_by_id, note, changed_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+        [historyId, id, fromStatus, newStatus, userId, note || `Status transitioned to ${newStatus}`, now]
+      );
+
+      // 3. Create Timeline Event
+      const eventType = newStatus === 'RESOLVED' ? 'INCIDENT_RESOLVED' : 'INCIDENT_STATUS_CHANGED';
+      await client.query(
+        `INSERT INTO timeline_events (id, project_id, type, title, description, metadata, entity_id, entity_type, occurred_at, ingested_at, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);`,
+        [
+          eventId,
+          inc.project_id,
+          eventType,
+          `Incident Status: ${newStatus}`,
+          note || `Transitioned from ${fromStatus} to ${newStatus}.`,
+          JSON.stringify({ incidentId: id, fromStatus, toStatus: newStatus, note, resolutionNote: finalResolutionNote }),
+          id,
+          'INCIDENT',
+          now,
+          now,
+          now,
+        ]
+      );
+
+      // 4. Create Audit Log
+      await client.query(
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+        [
+          auditId,
+          userId,
+          'INCIDENT_STATUS_UPDATE',
+          'INCIDENT',
+          id,
+          JSON.stringify({ fromStatus, toStatus: newStatus, note, resolutionNote: finalResolutionNote }),
+          now,
+        ]
+      );
+
+      return {
+        ...inc,
+        status: newStatus,
+        resolvedAt,
+        resolutionNote: finalResolutionNote,
+        updatedAt: now,
+      };
     });
-
-    // Record timeline event
-    const eventType = newStatus === 'RESOLVED' ? 'INCIDENT_RESOLVED' : 'INCIDENT_STATUS_CHANGED';
-    db.timelineEvents.push({
-      id: `tle_${uuidv4().substring(0, 8)}`,
-      projectId: inc.projectId,
-      type: eventType,
-      title: `Incident Status: ${newStatus}`,
-      description: note || `Transitioned from ${fromStatus} to ${newStatus}.`,
-      metadata: {
-        incidentId: inc.id,
-        fromStatus,
-        toStatus: newStatus,
-        note,
-        resolutionNote,
-      },
-      entityId: inc.id,
-      entityType: 'INCIDENT',
-      occurredAt: now,
-      ingestedAt: now,
-      createdAt: now,
-    });
-
-    // Audit log
-    db.auditLogs.push({
-      id: `aud_${uuidv4().substring(0, 8)}`,
-      userId,
-      action: 'INCIDENT_STATUS_UPDATE',
-      entityType: 'INCIDENT',
-      entityId: inc.id,
-      changes: { fromStatus, toStatus: newStatus, note, resolutionNote },
-      createdAt: now,
-    });
-
-    return inc;
   }
 
   async assignIncident(userId: string, id: string, assignedToId: string | null) {
-    const inc = db.incidents.find((i) => i.id === id);
-    if (!inc) throw new Error('Incident not found');
+    const incRows = await pgDb.query<any>('SELECT * FROM incidents WHERE id = $1 LIMIT 1;', [id]);
+    if (incRows.length === 0) throw new AppError('Incident not found', 404);
+    const inc = incRows[0];
 
-    const previousAssignee = inc.assignedToId;
-    inc.assignedToId = assignedToId;
-    inc.updatedAt = new Date();
+    const now = new Date();
+    const eventId = `tle_${uuidv4().substring(0, 8)}`;
+    const auditId = `aud_${uuidv4().substring(0, 8)}`;
 
-    const newAssigneeUser = assignedToId ? db.findUserById(assignedToId) : null;
+    let assigneeName = 'Unassigned';
+    if (assignedToId) {
+      const userRows = await pgDb.query<{ name: string }>('SELECT name FROM users WHERE id = $1 LIMIT 1;', [assignedToId]);
+      if (userRows.length > 0) assigneeName = userRows[0].name;
+    }
 
-    db.timelineEvents.push({
-      id: `tle_${uuidv4().substring(0, 8)}`,
-      projectId: inc.projectId,
-      type: 'INCIDENT_ASSIGNED',
-      title: `Incident Assigned to ${newAssigneeUser ? newAssigneeUser.name : 'Unassigned'}`,
-      description: `Ownership assigned for incident investigation.`,
-      metadata: { assignedToId, previousAssignee },
-      entityId: inc.id,
-      entityType: 'INCIDENT',
-      occurredAt: new Date(),
-      ingestedAt: new Date(),
-      createdAt: new Date(),
+    return await pgDb.transaction(async (client) => {
+      await client.query('UPDATE incidents SET assigned_to_id = $1, updated_at = $2 WHERE id = $3;', [assignedToId, now, id]);
+
+      await client.query(
+        `INSERT INTO timeline_events (id, project_id, type, title, description, metadata, entity_id, entity_type, occurred_at, ingested_at, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);`,
+        [
+          eventId,
+          inc.project_id,
+          'INCIDENT_ASSIGNED',
+          `Incident Assigned to ${assigneeName}`,
+          'Ownership assigned for incident investigation.',
+          JSON.stringify({ assignedToId, previousAssignee: inc.assigned_to_id }),
+          id,
+          'INCIDENT',
+          now,
+          now,
+          now,
+        ]
+      );
+
+      await client.query(
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+        [auditId, userId, 'INCIDENT_ASSIGNMENT', 'INCIDENT', id, JSON.stringify({ previousAssignee: inc.assigned_to_id, assignedToId }), now]
+      );
+
+      return {
+        ...inc,
+        assignedToId,
+        updatedAt: now,
+      };
     });
-
-    db.auditLogs.push({
-      id: `aud_${uuidv4().substring(0, 8)}`,
-      userId,
-      action: 'INCIDENT_ASSIGNMENT',
-      entityType: 'INCIDENT',
-      entityId: inc.id,
-      changes: { previousAssignee, assignedToId },
-      createdAt: new Date(),
-    });
-
-    return inc;
   }
 
   async linkDeployment(userId: string, incidentId: string, deploymentId: string, confidence: 'high' | 'medium' | 'low', note?: string) {
-    const inc = db.incidents.find((i) => i.id === incidentId);
-    if (!inc) throw new Error('Incident not found');
+    const incRows = await pgDb.query('SELECT project_id FROM incidents WHERE id = $1 LIMIT 1;', [incidentId]);
+    if (incRows.length === 0) throw new AppError('Incident not found', 404);
 
-    const dep = db.deployments.find((d) => d.id === deploymentId);
-    if (!dep) throw new Error('Deployment not found');
+    const depRows = await pgDb.query('SELECT id FROM deployments WHERE id = $1 LIMIT 1;', [deploymentId]);
+    if (depRows.length === 0) throw new AppError('Deployment not found', 404);
 
-    const existing = db.incidentDeploymentLinks.find((l) => l.incidentId === incidentId && l.deploymentId === deploymentId);
-    if (existing) {
-      existing.confidence = confidence;
-      if (note) existing.note = note;
-      return existing;
-    }
+    const existing = await pgDb.query<any>(
+      'SELECT id FROM incident_deployment_links WHERE incident_id = $1 AND deployment_id = $2 LIMIT 1;',
+      [incidentId, deploymentId]
+    );
 
-    const link: IncidentDeploymentLink = {
-      id: `idl_${uuidv4().substring(0, 8)}`,
-      incidentId,
-      deploymentId,
-      confidence,
-      linkedById: userId,
-      note: note || null,
-      createdAt: new Date(),
-    };
+    const now = new Date();
+    const linkId = existing.length > 0 ? existing[0].id : `idl_${uuidv4().substring(0, 8)}`;
 
-    db.incidentDeploymentLinks.push(link);
+    return await pgDb.transaction(async (client) => {
+      if (existing.length > 0) {
+        await client.query(
+          `UPDATE incident_deployment_links SET confidence = $1, note = $2, linked_by_id = $3 WHERE id = $4;`,
+          [confidence, note || null, userId, linkId]
+        );
+      } else {
+        await client.query(
+          `INSERT INTO incident_deployment_links (id, incident_id, deployment_id, confidence, linked_by_id, note, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+          [linkId, incidentId, deploymentId, confidence, userId, note || null, now]
+        );
+      }
 
-    db.auditLogs.push({
-      id: `aud_${uuidv4().substring(0, 8)}`,
-      userId,
-      action: 'INCIDENT_DEPLOYMENT_LINK',
-      entityType: 'INCIDENT',
-      entityId: inc.id,
-      changes: { deploymentId, confidence, note },
-      createdAt: new Date(),
+      await client.query(
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+        [`aud_${uuidv4().substring(0, 8)}`, userId, 'INCIDENT_DEPLOYMENT_LINK', 'INCIDENT', incidentId, JSON.stringify({ deploymentId, confidence, note }), now]
+      );
+
+      return {
+        id: linkId,
+        incidentId,
+        deploymentId,
+        confidence,
+        linkedById: userId,
+        note: note || null,
+        createdAt: now,
+      };
     });
-
-    return link;
   }
 
   async unlinkDeployment(userId: string, incidentId: string, deploymentId: string) {
-    const index = db.incidentDeploymentLinks.findIndex((l) => l.incidentId === incidentId && l.deploymentId === deploymentId);
-    if (index === -1) throw new Error('Link not found');
+    const existing = await pgDb.query(
+      'SELECT id FROM incident_deployment_links WHERE incident_id = $1 AND deployment_id = $2 LIMIT 1;',
+      [incidentId, deploymentId]
+    );
 
-    db.incidentDeploymentLinks.splice(index, 1);
+    if (existing.length === 0) throw new AppError('Link not found', 404);
 
-    db.auditLogs.push({
-      id: `aud_${uuidv4().substring(0, 8)}`,
-      userId,
-      action: 'INCIDENT_DEPLOYMENT_UNLINK',
-      entityType: 'INCIDENT',
-      entityId: incidentId,
-      changes: { deploymentId },
-      createdAt: new Date(),
+    const now = new Date();
+    await pgDb.transaction(async (client) => {
+      await client.query('DELETE FROM incident_deployment_links WHERE incident_id = $1 AND deployment_id = $2;', [incidentId, deploymentId]);
+
+      await client.query(
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+        [`aud_${uuidv4().substring(0, 8)}`, userId, 'INCIDENT_DEPLOYMENT_UNLINK', 'INCIDENT', incidentId, JSON.stringify({ deploymentId }), now]
+      );
     });
 
     return { success: true };
   }
 
   async addComment(userId: string, incidentId: string, content: string) {
-    const inc = db.incidents.find((i) => i.id === incidentId);
-    if (!inc) throw new Error('Incident not found');
+    const incRows = await pgDb.query<any>('SELECT project_id FROM incidents WHERE id = $1 LIMIT 1;', [incidentId]);
+    if (incRows.length === 0) throw new AppError('Incident not found', 404);
 
+    const commentId = `cmt_${uuidv4().substring(0, 8)}`;
+    const eventId = `tle_${uuidv4().substring(0, 8)}`;
     const now = new Date();
-    const comment: Comment = {
-      id: `cmt_${uuidv4().substring(0, 8)}`,
-      incidentId,
-      userId,
-      content,
-      createdAt: now,
-      updatedAt: now,
-    };
 
-    db.comments.push(comment);
+    return await pgDb.transaction(async (client) => {
+      await client.query(
+        `INSERT INTO comments (id, incident_id, user_id, content, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6);`,
+        [commentId, incidentId, userId, content, now, now]
+      );
 
-    db.timelineEvents.push({
-      id: `tle_${uuidv4().substring(0, 8)}`,
-      projectId: inc.projectId,
-      type: 'COMMENT_ADDED',
-      title: 'Investigation Comment Added',
-      description: content.length > 80 ? `${content.substring(0, 80)}...` : content,
-      metadata: { incidentId, commentId: comment.id },
-      entityId: comment.id,
-      entityType: 'COMMENT',
-      occurredAt: now,
-      ingestedAt: now,
-      createdAt: now,
+      await client.query(
+        `INSERT INTO timeline_events (id, project_id, type, title, description, metadata, entity_id, entity_type, occurred_at, ingested_at, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);`,
+        [
+          eventId,
+          incRows[0].project_id,
+          'COMMENT_ADDED',
+          'Investigation Comment Added',
+          content.length > 80 ? `${content.substring(0, 80)}...` : content,
+          JSON.stringify({ incidentId, commentId }),
+          commentId,
+          'COMMENT',
+          now,
+          now,
+          now,
+        ]
+      );
+
+      const userRows = await client.query<any>('SELECT id, name, email, avatar_url FROM users WHERE id = $1;', [userId]);
+      const user = userRows[0];
+
+      return {
+        id: commentId,
+        incidentId,
+        userId,
+        content,
+        createdAt: now,
+        updatedAt: now,
+        user: user ? { id: user.id, name: user.name, email: user.email, avatarUrl: user.avatar_url } : null,
+      };
     });
-
-    const user = db.findUserById(userId);
-    return {
-      ...comment,
-      user: user ? { id: user.id, name: user.name, email: user.email, avatarUrl: user.avatarUrl } : null,
-    };
   }
 
   async getComments(incidentId: string) {
-    return db.comments
-      .filter((c) => c.incidentId === incidentId)
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-      .map((c) => {
-        const u = db.findUserById(c.userId);
-        return {
-          ...c,
-          user: u ? { id: u.id, name: u.name, email: u.email, avatarUrl: u.avatarUrl } : null,
-        };
-      });
+    const rows = await pgDb.query<any>(
+      `SELECT c.*, u.name as "userName", u.email as "userEmail", u.avatar_url as "userAvatar"
+       FROM comments c
+       INNER JOIN users u ON u.id = c.user_id
+       WHERE c.incident_id = $1
+       ORDER BY c.created_at ASC;`,
+      [incidentId]
+    );
+
+    return rows.map((c) => ({
+      id: c.id,
+      incidentId: c.incident_id,
+      userId: c.user_id,
+      content: c.content,
+      createdAt: c.created_at,
+      updatedAt: c.updated_at,
+      user: { id: c.user_id, name: c.userName, email: c.userEmail, avatarUrl: c.userAvatar },
+    }));
   }
 
   async getHistory(incidentId: string) {
-    return db.incidentStatusHistories
-      .filter((h) => h.incidentId === incidentId)
-      .sort((a, b) => new Date(a.changedAt).getTime() - new Date(b.changedAt).getTime())
-      .map((h) => {
-        const u = h.changedById ? db.findUserById(h.changedById) : null;
-        return {
-          ...h,
-          changedBy: u ? { id: u.id, name: u.name, email: u.email } : null,
-        };
-      });
+    const rows = await pgDb.query<any>(
+      `SELECT ish.*, u.name as "changedByName", u.email as "changedByEmail"
+       FROM incident_status_history ish
+       LEFT JOIN users u ON u.id = ish.changed_by_id
+       WHERE ish.incident_id = $1
+       ORDER BY ish.changed_at ASC;`,
+      [incidentId]
+    );
+
+    return rows.map((h) => ({
+      id: h.id,
+      incidentId: h.incident_id,
+      fromStatus: h.from_status,
+      toStatus: h.to_status,
+      changedById: h.changed_by_id,
+      note: h.note,
+      changedAt: h.changed_at,
+      changedBy: h.changed_by_id ? { id: h.changed_by_id, name: h.changedByName, email: h.changedByEmail } : null,
+    }));
   }
 }
 

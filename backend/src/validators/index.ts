@@ -93,6 +93,7 @@ export const updateIncidentSchema = z.object({
   description: z.string().max(5000).optional().nullable(),
   severity: z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']).optional(),
   assignedToId: z.string().optional().nullable(),
+  expectedUpdatedAt: z.string().optional(),
 });
 
 export const updateIncidentStatusSchema = z.object({

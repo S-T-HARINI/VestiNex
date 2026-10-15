@@ -216,4 +216,84 @@ describe('VestiNex Backend API Integration Tests', () => {
     expect(res.body.summary).toBeDefined();
     expect(res.body.severityDistribution).toBeDefined();
   });
+
+  // 15. Duplicate commit SHA ingestion conflict (HTTP 409)
+  it('POST /api/projects/:id/code-changes rejects duplicate commit SHA with HTTP 409', async () => {
+    const res = await request(app)
+      .post(`/api/projects/${createdProjectId}/code-changes`)
+      .set('Cookie', authCookie)
+      .send({
+        commitSha: 'd8e4f1a', // duplicate commitSha from test 8
+        message: 'duplicate commit event submission',
+        author: 'Alex Rivera <alex@vestinex.io>',
+        committedAt: new Date().toISOString(),
+      });
+
+    expect(res.status).toBe(409);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toContain('already been recorded');
+  });
+
+  // 16. Simultaneous update concurrency conflict (HTTP 409)
+  it('PATCH /api/incidents/:id rejects concurrent edits with stale expectedUpdatedAt with HTTP 409', async () => {
+    const staleDate = new Date(Date.now() - 7200000).toISOString();
+    const res = await request(app)
+      .patch(`/api/incidents/${createdIncidentId}`)
+      .set('Cookie', authCookie)
+      .send({
+        title: 'Conflicting Concurrent Edit Title',
+        expectedUpdatedAt: staleDate,
+      });
+
+    expect(res.status).toBe(409);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toContain('Concurrent edit conflict');
+  });
+
+  // 17. Out-of-order and delayed telemetry ingestion
+  it('Calculates delay latency for out-of-order and delayed telemetry events', async () => {
+    const tenMinutesAgo = new Date(Date.now() - 600000);
+    const { timelineService } = await import('../src/services/timeline.service');
+    await timelineService.recordTimelineEvent({
+      projectId: createdProjectId,
+      type: 'INCIDENT_CREATED',
+      title: 'Delayed config change event from edge gateway',
+      occurredAt: tenMinutesAgo,
+    });
+
+    const res = await request(app)
+      .get(`/api/projects/${createdProjectId}/timeline?delayedOnly=true`)
+      .set('Cookie', authCookie);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.events.length).toBeGreaterThan(0);
+    const delayedEvent = res.body.events.find((e: any) => e.title.includes('Delayed config change'));
+    expect(delayedEvent).toBeDefined();
+    expect(delayedEvent.isDelayed).toBe(true);
+    expect(delayedEvent.delaySeconds).toBeGreaterThan(500);
+  });
+
+  // 18. RBAC Authorization Protection
+  it('Enforces RBAC: viewer cannot perform administrative operations', async () => {
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({
+        email: 'viewer@vestinex.io',
+        password: 'password123',
+      });
+    expect(loginRes.status).toBe(200);
+    const viewerCookie = loginRes.headers['set-cookie'][0];
+
+    // Attempting to add a member as a viewer to a project where they are not OWNER/ADMIN
+    const memberRes = await request(app)
+      .post(`/api/projects/${createdProjectId}/members`)
+      .set('Cookie', viewerCookie)
+      .send({
+        email: 'dev@vestinex.io',
+        role: 'DEVELOPER',
+      });
+    expect(memberRes.status).toBe(403);
+    expect(memberRes.body.success).toBe(false);
+  });
 });

@@ -44,21 +44,12 @@ export default function DashboardPage() {
     loadData();
   }, []);
 
-  // Aggregated trend data from projects
-  const trendData = [
-    { date: 'Feb 10', deployments: 1, incidents: 0, successful: 1 },
-    { date: 'Feb 11', deployments: 0, incidents: 0, successful: 0 },
-    { date: 'Feb 12', deployments: 0, incidents: 0, successful: 0 },
-    { date: 'Feb 13', deployments: 0, incidents: 0, successful: 0 },
-    { date: 'Feb 14', deployments: 2, incidents: 1, successful: 2 },
-    { date: 'Feb 15', deployments: 1, incidents: 1, successful: 0 },
-    { date: 'Feb 16', deployments: 0, incidents: 0, successful: 0 },
-  ];
-
-  const severityData = {
-    CRITICAL: 1,
-    HIGH: 1,
-    MEDIUM: 1,
+  // Aggregated trend data and severity breakdown from backend
+  const trendData = stats?.trendData && stats.trendData.length > 0 ? stats.trendData : [];
+  const severityData = stats?.severityDistribution || {
+    CRITICAL: 0,
+    HIGH: 0,
+    MEDIUM: 0,
     LOW: 0,
   };
 

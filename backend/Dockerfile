@@ -3,12 +3,12 @@ FROM node:20-alpine AS base
 WORKDIR /app
 
 # Install dependencies
-COPY package*.json ./
-COPY ../prisma ./prisma
+COPY backend/package*.json ./
+COPY prisma ./prisma
 RUN npm install
 
 # Copy source
-COPY . .
+COPY backend .
 
 # Generate Prisma Client
 RUN npx prisma generate --schema=./prisma/schema.prisma || true

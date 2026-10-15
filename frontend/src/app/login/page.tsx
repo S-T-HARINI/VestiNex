@@ -110,53 +110,57 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-800" />
-              </div>
-              <div className="relative flex justify-center text-[10px] uppercase font-mono tracking-wider">
-                <span className="bg-slate-900 px-2 text-slate-500">Fast Demo Access</span>
-              </div>
-            </div>
+            {process.env.NODE_ENV !== 'production' && (
+              <>
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-800" />
+                  </div>
+                  <div className="relative flex justify-center text-[10px] uppercase font-mono tracking-wider">
+                    <span className="bg-slate-900 px-2 text-slate-500">Fast Demo Access (Dev Only)</span>
+                  </div>
+                </div>
 
-            {/* Quick Demo Access Buttons */}
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('admin@vestinex.io')}
-                className="flex flex-col items-start rounded border border-slate-800 bg-slate-950/70 p-2 text-left hover:border-indigo-500/50 hover:bg-slate-900 transition-colors"
-              >
-                <span className="font-semibold text-slate-200 text-[11px]">Platform Lead</span>
-                <span className="text-[10px] text-indigo-400 font-mono">admin@vestinex.io</span>
-              </button>
+                {/* Quick Demo Access Buttons */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickLogin('admin@vestinex.io')}
+                    className="flex flex-col items-start rounded border border-slate-800 bg-slate-950/70 p-2 text-left hover:border-indigo-500/50 hover:bg-slate-900 transition-colors"
+                  >
+                    <span className="font-semibold text-slate-200 text-[11px]">Platform Lead</span>
+                    <span className="text-[10px] text-indigo-400 font-mono">admin@vestinex.io</span>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('dev@vestinex.io')}
-                className="flex flex-col items-start rounded border border-slate-800 bg-slate-950/70 p-2 text-left hover:border-indigo-500/50 hover:bg-slate-900 transition-colors"
-              >
-                <span className="font-semibold text-slate-200 text-[11px]">Staff SRE</span>
-                <span className="text-[10px] text-cyan-400 font-mono">dev@vestinex.io</span>
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickLogin('dev@vestinex.io')}
+                    className="flex flex-col items-start rounded border border-slate-800 bg-slate-950/70 p-2 text-left hover:border-indigo-500/50 hover:bg-slate-900 transition-colors"
+                  >
+                    <span className="font-semibold text-slate-200 text-[11px]">Staff SRE</span>
+                    <span className="text-[10px] text-cyan-400 font-mono">dev@vestinex.io</span>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('lead@vestinex.io')}
-                className="flex flex-col items-start rounded border border-slate-800 bg-slate-950/70 p-2 text-left hover:border-indigo-500/50 hover:bg-slate-900 transition-colors"
-              >
-                <span className="font-semibold text-slate-200 text-[11px]">Backend Architect</span>
-                <span className="text-[10px] text-emerald-400 font-mono">lead@vestinex.io</span>
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickLogin('lead@vestinex.io')}
+                    className="flex flex-col items-start rounded border border-slate-800 bg-slate-950/70 p-2 text-left hover:border-indigo-500/50 hover:bg-slate-900 transition-colors"
+                  >
+                    <span className="font-semibold text-slate-200 text-[11px]">Backend Architect</span>
+                    <span className="text-[10px] text-emerald-400 font-mono">lead@vestinex.io</span>
+                  </button>
 
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('viewer@vestinex.io')}
-                className="flex flex-col items-start rounded border border-slate-800 bg-slate-950/70 p-2 text-left hover:border-indigo-500/50 hover:bg-slate-900 transition-colors"
-              >
-                <span className="font-semibold text-slate-200 text-[11px]">Observer (Read-Only)</span>
-                <span className="text-[10px] text-slate-400 font-mono">viewer@vestinex.io</span>
-              </button>
-            </div>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickLogin('viewer@vestinex.io')}
+                    className="flex flex-col items-start rounded border border-slate-800 bg-slate-950/70 p-2 text-left hover:border-indigo-500/50 hover:bg-slate-900 transition-colors"
+                  >
+                    <span className="font-semibold text-slate-200 text-[11px]">Observer (Read-Only)</span>
+                    <span className="text-[10px] text-slate-400 font-mono">viewer@vestinex.io</span>
+                  </button>
+                </div>
+              </>
+            )}
 
             <div className="text-center pt-2 text-xs text-slate-400">
               Need a new account?{' '}

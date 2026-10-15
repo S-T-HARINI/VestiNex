@@ -1,146 +1,223 @@
 import { v4 as uuidv4 } from 'uuid';
-import { db } from '../lib/store';
+import { pgDb } from '../lib/postgres';
 import { Project, ProjectRole, ProjectStatus, Environment } from '../types';
+import { AppError } from '../middleware/errorHandler';
 
 export class ProjectService {
   async listProjects(userId: string) {
-    const user = db.findUserById(userId);
-    if (!user) throw new Error('User not found');
+    const userRows = await pgDb.query<{ role: string }>('SELECT role FROM users WHERE id = $1 LIMIT 1;', [userId]);
+    if (userRows.length === 0) throw new AppError('User not found', 404);
 
-    // System ADMIN can see all projects
-    if (user.role === 'ADMIN') {
-      return db.projects.map((p) => {
-        const mem = db.projectMembers.find((m) => m.projectId === p.id && m.userId === userId);
-        return {
-          ...p,
-          role: mem ? mem.role : 'ADMIN',
-          memberCount: db.projectMembers.filter((m) => m.projectId === p.id).length,
-          deploymentCount: db.deployments.filter((d) => d.projectId === p.id).length,
-          incidentCount: db.incidents.filter((i) => i.projectId === p.id && i.status !== 'RESOLVED' && i.status !== 'CLOSED').length,
-        };
-      });
+    const isSystemAdmin = userRows[0].role === 'ADMIN';
+
+    let sql = '';
+    let params: any[] = [];
+
+    if (isSystemAdmin) {
+      sql = `
+        SELECT p.*,
+          COALESCE(pm.role, 'ADMIN') as role,
+          (SELECT COUNT(*) FROM project_members WHERE project_id = p.id) as "memberCount",
+          (SELECT COUNT(*) FROM deployments WHERE project_id = p.id) as "deploymentCount",
+          (SELECT COUNT(*) FROM incidents WHERE project_id = p.id AND status NOT IN ('RESOLVED', 'CLOSED')) as "incidentCount"
+        FROM projects p
+        LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = $1
+        ORDER BY p.created_at DESC;
+      `;
+      params = [userId];
+    } else {
+      sql = `
+        SELECT p.*,
+          pm.role as role,
+          (SELECT COUNT(*) FROM project_members WHERE project_id = p.id) as "memberCount",
+          (SELECT COUNT(*) FROM deployments WHERE project_id = p.id) as "deploymentCount",
+          (SELECT COUNT(*) FROM incidents WHERE project_id = p.id AND status NOT IN ('RESOLVED', 'CLOSED')) as "incidentCount"
+        FROM projects p
+        INNER JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = $1
+        ORDER BY p.created_at DESC;
+      `;
+      params = [userId];
     }
 
-    const memberships = db.projectMembers.filter((m) => m.userId === userId);
-    return memberships
-      .map((m) => {
-        const project = db.findProjectById(m.projectId);
-        if (!project) return null;
-        return {
-          ...project,
-          role: m.role,
-          memberCount: db.projectMembers.filter((mem) => mem.projectId === project.id).length,
-          deploymentCount: db.deployments.filter((d) => d.projectId === project.id).length,
-          incidentCount: db.incidents.filter((i) => i.projectId === project.id && i.status !== 'RESOLVED' && i.status !== 'CLOSED').length,
-        };
-      })
-      .filter(Boolean);
+    const rows = await pgDb.query<any>(sql, params);
+    return rows.map((p) => ({
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      repoUrl: p.repo_url,
+      environment: p.environment,
+      status: p.status,
+      role: p.role,
+      memberCount: parseInt(p.memberCount, 10) || 0,
+      deploymentCount: parseInt(p.deploymentCount, 10) || 0,
+      incidentCount: parseInt(p.incidentCount, 10) || 0,
+      createdAt: p.created_at,
+      updatedAt: p.updated_at,
+    }));
   }
 
   async getProject(userId: string, projectId: string) {
-    const project = db.findProjectById(projectId);
-    if (!project) throw new Error('Project not found');
+    const projectRows = await pgDb.query<any>('SELECT * FROM projects WHERE id = $1 LIMIT 1;', [projectId]);
+    if (projectRows.length === 0) throw new AppError('Project not found', 404);
 
-    const role = db.getProjectMemberRole(userId, projectId);
-    const user = db.findUserById(userId);
-    if (!role && user?.role !== 'ADMIN') {
-      throw new Error('Access denied to this project');
+    const p = projectRows[0];
+
+    // Check user membership / role
+    const memberRole = await this.getMemberRole(userId, projectId);
+    const userRows = await pgDb.query<{ role: string }>('SELECT role FROM users WHERE id = $1 LIMIT 1;', [userId]);
+    const isSystemAdmin = userRows.length > 0 && userRows[0].role === 'ADMIN';
+
+    if (!memberRole && !isSystemAdmin) {
+      throw new AppError('Access denied: You are not a member of this project.', 403);
     }
 
-    const members = db.projectMembers
-      .filter((m) => m.projectId === projectId)
-      .map((m) => {
-        const u = db.findUserById(m.userId);
-        return {
-          id: m.id,
-          userId: m.userId,
-          role: m.role,
-          joinedAt: m.joinedAt,
-          user: u ? { id: u.id, name: u.name, email: u.email, avatarUrl: u.avatarUrl } : null,
-        };
-      });
+    // Fetch members with user profile
+    const membersSql = `
+      SELECT pm.id, pm.user_id as "userId", pm.role, pm.joined_at as "joinedAt",
+             u.name, u.email, u.avatar_url as "avatarUrl"
+      FROM project_members pm
+      INNER JOIN users u ON u.id = pm.user_id
+      WHERE pm.project_id = $1
+      ORDER BY pm.joined_at ASC;
+    `;
+    const membersRows = await pgDb.query<any>(membersSql, [projectId]);
 
     return {
-      ...project,
-      role: role || 'ADMIN',
-      members,
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      repoUrl: p.repo_url,
+      environment: p.environment,
+      status: p.status,
+      role: memberRole || 'ADMIN',
+      createdAt: p.created_at,
+      updatedAt: p.updated_at,
+      members: membersRows.map((m) => ({
+        id: m.id,
+        userId: m.userId,
+        role: m.role,
+        joinedAt: m.joinedAt,
+        user: {
+          id: m.userId,
+          name: m.name,
+          email: m.email,
+          avatarUrl: m.avatarUrl,
+        },
+      })),
     };
   }
 
   async createProject(userId: string, data: { name: string; description?: string; repoUrl?: string; environment: Environment }) {
-    const project: Project = {
-      id: `prj_${uuidv4().substring(0, 8)}`,
-      name: data.name,
-      description: data.description || null,
-      repoUrl: data.repoUrl || null,
-      environment: data.environment,
-      status: 'ACTIVE',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    const projectId = `prj_${uuidv4().substring(0, 8)}`;
+    const memberId = `mem_${uuidv4().substring(0, 8)}`;
+    const eventId = `tle_${uuidv4().substring(0, 8)}`;
+    const auditId = `aud_${uuidv4().substring(0, 8)}`;
+    const now = new Date();
 
-    db.projects.push(project);
+    return await pgDb.transaction(async (client) => {
+      // 1. Insert Project
+      await client.query(
+        `INSERT INTO projects (id, name, description, repo_url, environment, status, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
+        [projectId, data.name, data.description || null, data.repoUrl || null, data.environment, 'ACTIVE', now, now]
+      );
 
-    // Creator becomes OWNER
-    db.projectMembers.push({
-      id: `mem_${uuidv4().substring(0, 8)}`,
-      userId,
-      projectId: project.id,
-      role: 'OWNER',
-      joinedAt: new Date(),
+      // 2. Insert creator as OWNER
+      await client.query(
+        `INSERT INTO project_members (id, user_id, project_id, role, joined_at)
+         VALUES ($1, $2, $3, $4, $5);`,
+        [memberId, userId, projectId, 'OWNER', now]
+      );
+
+      // 3. Create Timeline Event
+      await client.query(
+        `INSERT INTO timeline_events (id, project_id, type, title, description, metadata, entity_id, entity_type, occurred_at, ingested_at, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);`,
+        [
+          eventId,
+          projectId,
+          'PROJECT_CREATED',
+          `Project "${data.name}" Created`,
+          `Project initialized for ${data.environment} environment.`,
+          JSON.stringify({ createdBy: userId }),
+          projectId,
+          'PROJECT',
+          now,
+          now,
+          now,
+        ]
+      );
+
+      // 4. Create Audit Log
+      await client.query(
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+        [
+          auditId,
+          userId,
+          'PROJECT_CREATE',
+          'PROJECT',
+          projectId,
+          JSON.stringify({ name: data.name, environment: data.environment }),
+          now,
+        ]
+      );
+
+      return {
+        id: projectId,
+        name: data.name,
+        description: data.description || null,
+        repoUrl: data.repoUrl || null,
+        environment: data.environment,
+        status: 'ACTIVE' as ProjectStatus,
+        createdAt: now,
+        updatedAt: now,
+      };
     });
-
-    // Record timeline event
-    db.timelineEvents.push({
-      id: `tle_${uuidv4().substring(0, 8)}`,
-      projectId: project.id,
-      type: 'PROJECT_CREATED',
-      title: `Project "${project.name}" Created`,
-      description: `Project initialized for ${project.environment} environment.`,
-      metadata: { createdBy: userId },
-      entityId: project.id,
-      entityType: 'PROJECT',
-      occurredAt: new Date(),
-      ingestedAt: new Date(),
-      createdAt: new Date(),
-    });
-
-    // Audit log
-    db.auditLogs.push({
-      id: `aud_${uuidv4().substring(0, 8)}`,
-      userId,
-      action: 'PROJECT_CREATE',
-      entityType: 'PROJECT',
-      entityId: project.id,
-      changes: { name: project.name, environment: project.environment },
-      createdAt: new Date(),
-    });
-
-    return project;
   }
 
-  async updateProject(userId: string, projectId: string, data: Partial<{ name: string; description: string | null; repoUrl: string | null; environment: Environment; status: ProjectStatus }>) {
-    const project = db.findProjectById(projectId);
-    if (!project) throw new Error('Project not found');
+  async updateProject(
+    userId: string,
+    projectId: string,
+    data: Partial<{ name: string; description: string | null; repoUrl: string | null; environment: Environment; status: ProjectStatus }>
+  ) {
+    const existing = await pgDb.query<any>('SELECT * FROM projects WHERE id = $1 LIMIT 1;', [projectId]);
+    if (existing.length === 0) throw new AppError('Project not found', 404);
 
-    if (data.name !== undefined) project.name = data.name;
-    if (data.description !== undefined) project.description = data.description;
-    if (data.repoUrl !== undefined) project.repoUrl = data.repoUrl;
-    if (data.environment !== undefined) project.environment = data.environment;
-    if (data.status !== undefined) project.status = data.status;
-    project.updatedAt = new Date();
+    const now = new Date();
+    const current = existing[0];
 
-    db.auditLogs.push({
-      id: `aud_${uuidv4().substring(0, 8)}`,
-      userId,
-      action: 'PROJECT_UPDATE',
-      entityType: 'PROJECT',
-      entityId: project.id,
-      changes: data,
-      createdAt: new Date(),
+    const updatedName = data.name !== undefined ? data.name : current.name;
+    const updatedDesc = data.description !== undefined ? data.description : current.description;
+    const updatedRepo = data.repoUrl !== undefined ? data.repoUrl : current.repo_url;
+    const updatedEnv = data.environment !== undefined ? data.environment : current.environment;
+    const updatedStatus = data.status !== undefined ? data.status : current.status;
+
+    return await pgDb.transaction(async (client) => {
+      await client.query(
+        `UPDATE projects
+         SET name = $1, description = $2, repo_url = $3, environment = $4, status = $5, updated_at = $6
+         WHERE id = $7;`,
+        [updatedName, updatedDesc, updatedRepo, updatedEnv, updatedStatus, now, projectId]
+      );
+
+      await client.query(
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+        [`aud_${uuidv4().substring(0, 8)}`, userId, 'PROJECT_UPDATE', 'PROJECT', projectId, JSON.stringify(data), now]
+      );
+
+      return {
+        id: projectId,
+        name: updatedName,
+        description: updatedDesc,
+        repoUrl: updatedRepo,
+        environment: updatedEnv,
+        status: updatedStatus,
+        createdAt: current.created_at,
+        updatedAt: now,
+      };
     });
-
-    return project;
   }
 
   async archiveProject(userId: string, projectId: string) {
@@ -148,109 +225,141 @@ export class ProjectService {
   }
 
   async getMembers(projectId: string) {
-    return db.projectMembers
-      .filter((m) => m.projectId === projectId)
-      .map((m) => {
-        const u = db.findUserById(m.userId);
-        return {
-          id: m.id,
-          userId: m.userId,
-          role: m.role,
-          joinedAt: m.joinedAt,
-          user: u ? { id: u.id, name: u.name, email: u.email, avatarUrl: u.avatarUrl } : null,
-        };
-      });
+    const membersSql = `
+      SELECT pm.id, pm.user_id as "userId", pm.role, pm.joined_at as "joinedAt",
+             u.name, u.email, u.avatar_url as "avatarUrl"
+      FROM project_members pm
+      INNER JOIN users u ON u.id = pm.user_id
+      WHERE pm.project_id = $1
+      ORDER BY pm.joined_at ASC;
+    `;
+    const rows = await pgDb.query<any>(membersSql, [projectId]);
+    return rows.map((m) => ({
+      id: m.id,
+      userId: m.userId,
+      role: m.role,
+      joinedAt: m.joinedAt,
+      user: {
+        id: m.userId,
+        name: m.name,
+        email: m.email,
+        avatarUrl: m.avatarUrl,
+      },
+    }));
   }
 
   async addMember(userId: string, projectId: string, targetEmail: string, role: ProjectRole) {
-    const targetUser = db.findUserByEmail(targetEmail);
-    if (!targetUser) {
-      throw new Error(`User with email "${targetEmail}" does not exist in the system.`);
+    const userRows = await pgDb.query<any>('SELECT id, name, email, avatar_url FROM users WHERE lower(email) = lower($1) LIMIT 1;', [targetEmail]);
+    if (userRows.length === 0) {
+      throw new AppError(`User with email "${targetEmail}" does not exist.`, 404);
     }
 
-    const existing = db.projectMembers.find((m) => m.projectId === projectId && m.userId === targetUser.id);
-    if (existing) {
-      throw new Error('This user is already a member of this project.');
+    const targetUser = userRows[0];
+    const existing = await pgDb.query('SELECT id FROM project_members WHERE project_id = $1 AND user_id = $2;', [projectId, targetUser.id]);
+    if (existing.length > 0) {
+      throw new AppError('This user is already a member of this project.', 409, 'CONFLICT');
     }
 
-    const member: ProjectMember = {
-      id: `mem_${uuidv4().substring(0, 8)}`,
-      userId: targetUser.id,
-      projectId,
-      role,
-      joinedAt: new Date(),
-    };
+    const memberId = `mem_${uuidv4().substring(0, 8)}`;
+    const now = new Date();
 
-    db.projectMembers.push(member);
+    return await pgDb.transaction(async (client) => {
+      await client.query(
+        `INSERT INTO project_members (id, user_id, project_id, role, joined_at)
+         VALUES ($1, $2, $3, $4, $5);`,
+        [memberId, targetUser.id, projectId, role, now]
+      );
 
-    db.timelineEvents.push({
-      id: `tle_${uuidv4().substring(0, 8)}`,
-      projectId,
-      type: 'MEMBER_ADDED',
-      title: `Member Added: ${targetUser.name}`,
-      description: `Assigned role ${role}`,
-      metadata: { addedUserId: targetUser.id, role },
-      entityId: member.id,
-      entityType: 'PROJECT_MEMBER',
-      occurredAt: new Date(),
-      ingestedAt: new Date(),
-      createdAt: new Date(),
+      await client.query(
+        `INSERT INTO timeline_events (id, project_id, type, title, description, metadata, entity_id, entity_type, occurred_at, ingested_at, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);`,
+        [
+          `tle_${uuidv4().substring(0, 8)}`,
+          projectId,
+          'MEMBER_ADDED',
+          `Member Added: ${targetUser.name}`,
+          `Assigned role ${role}`,
+          JSON.stringify({ addedUserId: targetUser.id, role }),
+          memberId,
+          'PROJECT_MEMBER',
+          now,
+          now,
+          now,
+        ]
+      );
+
+      await client.query(
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+        [`aud_${uuidv4().substring(0, 8)}`, userId, 'MEMBER_ADDED', 'PROJECT_MEMBER', memberId, JSON.stringify({ userEmail: targetEmail, role }), now]
+      );
+
+      return {
+        id: memberId,
+        userId: targetUser.id,
+        projectId,
+        role,
+        joinedAt: now,
+        user: {
+          id: targetUser.id,
+          name: targetUser.name,
+          email: targetUser.email,
+          avatarUrl: targetUser.avatar_url,
+        },
+      };
     });
-
-    db.auditLogs.push({
-      id: `aud_${uuidv4().substring(0, 8)}`,
-      userId,
-      action: 'MEMBER_ADDED',
-      entityType: 'PROJECT_MEMBER',
-      entityId: member.id,
-      changes: { userEmail: targetEmail, role },
-      createdAt: new Date(),
-    });
-
-    return {
-      ...member,
-      user: { id: targetUser.id, name: targetUser.name, email: targetUser.email, avatarUrl: targetUser.avatarUrl },
-    };
   }
 
   async updateMemberRole(userId: string, projectId: string, targetUserId: string, newRole: ProjectRole) {
-    const member = db.projectMembers.find((m) => m.projectId === projectId && m.userId === targetUserId);
-    if (!member) throw new Error('Member not found');
+    const existing = await pgDb.query<any>(
+      'SELECT id, role FROM project_members WHERE project_id = $1 AND user_id = $2 LIMIT 1;',
+      [projectId, targetUserId]
+    );
 
-    const oldRole = member.role;
-    member.role = newRole;
+    if (existing.length === 0) throw new AppError('Member not found', 404);
 
-    db.auditLogs.push({
-      id: `aud_${uuidv4().substring(0, 8)}`,
-      userId,
-      action: 'MEMBER_ROLE_UPDATED',
-      entityType: 'PROJECT_MEMBER',
-      entityId: member.id,
-      changes: { oldRole, newRole },
-      createdAt: new Date(),
+    const oldRole = existing[0].role;
+    const now = new Date();
+
+    await pgDb.transaction(async (client) => {
+      await client.query('UPDATE project_members SET role = $1 WHERE id = $2;', [newRole, existing[0].id]);
+      await client.query(
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+        [`aud_${uuidv4().substring(0, 8)}`, userId, 'MEMBER_ROLE_UPDATED', 'PROJECT_MEMBER', existing[0].id, JSON.stringify({ oldRole, newRole }), now]
+      );
     });
 
-    return member;
+    return { id: existing[0].id, userId: targetUserId, projectId, role: newRole };
   }
 
   async removeMember(userId: string, projectId: string, targetUserId: string) {
-    const index = db.projectMembers.findIndex((m) => m.projectId === projectId && m.userId === targetUserId);
-    if (index === -1) throw new Error('Member not found');
+    const existing = await pgDb.query<any>(
+      'SELECT id FROM project_members WHERE project_id = $1 AND user_id = $2 LIMIT 1;',
+      [projectId, targetUserId]
+    );
 
-    const member = db.projectMembers[index];
-    db.projectMembers.splice(index, 1);
+    if (existing.length === 0) throw new AppError('Member not found', 404);
 
-    db.auditLogs.push({
-      id: `aud_${uuidv4().substring(0, 8)}`,
-      userId,
-      action: 'MEMBER_REMOVED',
-      entityType: 'PROJECT_MEMBER',
-      entityId: member.id,
-      changes: { removedUserId: targetUserId },
-      createdAt: new Date(),
+    const now = new Date();
+    await pgDb.transaction(async (client) => {
+      await client.query('DELETE FROM project_members WHERE id = $1;', [existing[0].id]);
+      await client.query(
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+        [`aud_${uuidv4().substring(0, 8)}`, userId, 'MEMBER_REMOVED', 'PROJECT_MEMBER', existing[0].id, JSON.stringify({ removedUserId: targetUserId }), now]
+      );
     });
 
     return { success: true };
+  }
+
+  async getMemberRole(userId: string, projectId: string): Promise<ProjectRole | null> {
+    const rows = await pgDb.query<{ role: ProjectRole }>(
+      'SELECT role FROM project_members WHERE project_id = $1 AND user_id = $2 LIMIT 1;',
+      [projectId, userId]
+    );
+    return rows.length > 0 ? rows[0].role : null;
   }
 }
 

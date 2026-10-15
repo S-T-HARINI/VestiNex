@@ -15,7 +15,9 @@
     "prisma:seed": "tsx src/scripts/seed.ts"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.10",
     "@prisma/client": "^5.22.0",
+    "@types/pg": "^8.23.1",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -23,6 +25,7 @@
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
     "express-session": "^1.18.1",
+    "pg": "^8.23.1",
     "uuid": "^11.0.5",
     "zod": "^3.24.1"
   },
