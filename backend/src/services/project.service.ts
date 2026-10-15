@@ -44,10 +44,7 @@ export class ProjectService {
 
     // Check user membership / role
     const memberRole = await this.getMemberRole(userId, projectId);
-    const userRows = await pgDb.query<{ role: string }>('SELECT role FROM users WHERE id = $1 LIMIT 1;', [userId]);
-    const isSystemAdmin = userRows.length > 0 && userRows[0].role === 'ADMIN';
-
-    if (!memberRole && !isSystemAdmin) {
+    if (!memberRole) {
       throw new AppError('Access denied: You are not a member of this project.', 403);
     }
 

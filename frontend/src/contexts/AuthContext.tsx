@@ -70,6 +70,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
+    setProjects([]);
+    setActiveProject(null);
     const res = await api.login({ email, password });
     if (res.user) {
       setUser(res.user);
@@ -77,11 +79,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (projRes?.projects) {
         setProjects(projRes.projects);
         setActiveProject(projRes.projects[0] || null);
+      } else {
+        setProjects([]);
+        setActiveProject(null);
       }
     }
   };
 
   const register = async (name: string, email: string, password: string) => {
+    setProjects([]);
+    setActiveProject(null);
     const res = await api.register({ name, email, password });
     if (res.user) {
       setUser(res.user);
@@ -89,6 +96,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (projRes?.projects) {
         setProjects(projRes.projects);
         setActiveProject(projRes.projects[0] || null);
+      } else {
+        setProjects([]);
+        setActiveProject(null);
       }
     }
   };

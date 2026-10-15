@@ -40,6 +40,8 @@ docker-compose.override.yml
 prisma/*.db
 pgdata/
 backend/pgdata/
+*pgdata*/
+backend/*pgdata*/
 
 # Test coverage
 coverage/

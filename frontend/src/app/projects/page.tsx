@@ -20,25 +20,34 @@ import {
 } from 'lucide-react';
 
 export default function ProjectsPage() {
-  const { refreshProjects } = useAuth();
+  const { user, refreshProjects } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!user) {
+      setProjects([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     async function load() {
       try {
         const res = await api.getProjects();
         if (res.projects) {
           setProjects(res.projects);
+        } else {
+          setProjects([]);
         }
       } catch (err) {
         console.error(err);
+        setProjects([]);
       } finally {
         setLoading(false);
       }
     }
     load();
-  }, []);
+  }, [user?.id]);
 
   return (
     <AppLayout>

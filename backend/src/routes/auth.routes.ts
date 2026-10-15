@@ -11,16 +11,25 @@ const router = Router();
 router.post('/register', authLimiter, validate(registerSchema), async (req: Request, res: Response, next) => {
   try {
     const user = await authService.register(req.body);
+    const respond = () => {
+      res.cookie('vestinex_uid', user.id, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+      res.status(201).json({ success: true, user });
+    };
+
     if (req.session) {
-      req.session.userId = user.id;
+      req.session.regenerate((err) => {
+        if (err) return next(err);
+        req.session.userId = user.id;
+        respond();
+      });
+    } else {
+      respond();
     }
-    res.cookie('vestinex_uid', user.id, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-    res.status(201).json({ success: true, user });
   } catch (err) {
     next(err);
   }
@@ -30,16 +39,25 @@ router.post('/register', authLimiter, validate(registerSchema), async (req: Requ
 router.post('/login', authLimiter, validate(loginSchema), async (req: Request, res: Response, next) => {
   try {
     const user = await authService.login(req.body);
+    const respond = () => {
+      res.cookie('vestinex_uid', user.id, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+      res.json({ success: true, user });
+    };
+
     if (req.session) {
-      req.session.userId = user.id;
+      req.session.regenerate((err) => {
+        if (err) return next(err);
+        req.session.userId = user.id;
+        respond();
+      });
+    } else {
+      respond();
     }
-    res.cookie('vestinex_uid', user.id, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-    res.json({ success: true, user });
   } catch (err) {
     next(err);
   }
@@ -51,6 +69,7 @@ router.post('/logout', (req: Request, res: Response) => {
     req.session.destroy(() => {});
   }
   res.clearCookie('vestinex_uid');
+  res.clearCookie('vestinex_sid');
   res.json({ success: true, message: 'Logged out successfully' });
 });
 

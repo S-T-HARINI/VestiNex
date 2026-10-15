@@ -40,20 +40,29 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!user) {
+      setStats(null);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     async function loadData() {
       try {
         const res = await api.getGlobalOverview();
         if (res.stats) {
           setStats(res.stats);
+        } else {
+          setStats(null);
         }
       } catch (err) {
         console.error(err);
+        setStats(null);
       } finally {
         setLoading(false);
       }
     }
     loadData();
-  }, []);
+  }, [user?.id]);
 
   const isInitialLoading = authLoading || loading;
 

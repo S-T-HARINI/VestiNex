@@ -19,7 +19,7 @@ router.get('/overview', authenticate, async (req: Request, res: Response, next) 
 router.get('/audit', authenticate, async (req: Request, res: Response, next) => {
   try {
     const { entityType, entityId } = req.query;
-    const logs = await auditService.list({
+    const logs = await auditService.list(req.user!.id, {
       entityType: entityType as string,
       entityId: entityId as string,
     });

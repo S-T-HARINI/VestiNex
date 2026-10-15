@@ -32,11 +32,6 @@ export const requireProjectRole = (minimumRole: ProjectRole) => {
         return;
       }
 
-      // System ADMIN has implicit full access
-      if (req.user.role === 'ADMIN') {
-        return next();
-      }
-
       const projectId = req.params.projectId || req.params.id || req.body.projectId;
       if (!projectId) {
         res.status(400).json({ success: false, error: 'Project ID is missing from request context' });
@@ -74,8 +69,6 @@ export const requireIncidentRole = (minimumRole: ProjectRole) => {
         res.status(401).json({ success: false, error: 'Unauthorized' });
         return;
       }
-      if (req.user.role === 'ADMIN') return next();
-
       const incidentId = req.params.id || req.params.incidentId;
       if (!incidentId) {
         res.status(400).json({ success: false, error: 'Incident ID is missing from request context' });
@@ -122,8 +115,6 @@ export const requireDeploymentRole = (minimumRole: ProjectRole) => {
         res.status(401).json({ success: false, error: 'Unauthorized' });
         return;
       }
-      if (req.user.role === 'ADMIN') return next();
-
       const deploymentId = req.params.id || req.params.deploymentId;
       if (!deploymentId) {
         res.status(400).json({ success: false, error: 'Deployment ID is missing from request context' });
@@ -170,8 +161,6 @@ export const requireCodeChangeRole = (minimumRole: ProjectRole) => {
         res.status(401).json({ success: false, error: 'Unauthorized' });
         return;
       }
-      if (req.user.role === 'ADMIN') return next();
-
       const codeChangeId = req.params.id;
       if (!codeChangeId) {
         res.status(400).json({ success: false, error: 'Code change ID is missing from request context' });

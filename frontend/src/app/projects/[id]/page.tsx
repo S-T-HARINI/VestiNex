@@ -37,12 +37,14 @@ import {
 export default function ProjectDashboardPage() {
   const params = useParams();
   const projectId = params.id as string;
-  const { setActiveProject } = useAuth();
+  const { user, setActiveProject } = useAuth();
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setData(null);
+    setLoading(true);
     async function load() {
       try {
         const res = await api.getProjectDashboard(projectId);
@@ -52,12 +54,17 @@ export default function ProjectDashboardPage() {
         }
       } catch (err) {
         console.error(err);
+        setData(null);
       } finally {
         setLoading(false);
       }
     }
-    if (projectId) load();
-  }, [projectId]);
+    if (projectId && user) {
+      load();
+    } else {
+      setLoading(false);
+    }
+  }, [projectId, user?.id]);
 
   if (loading) {
     return (

@@ -64,7 +64,9 @@ export class PostgresService {
           );
         }
         // Use genuine in-process PostgreSQL 16 engine with disk persistence in ./pgdata
-        const dataDir = path.resolve(process.cwd(), 'pgdata');
+        // For automated tests and verification scripts, use an isolated directory to avoid polluting user workspace
+        const defaultDir = process.env.NODE_ENV === 'test' ? 'pgdata_test' : 'pgdata';
+        const dataDir = path.resolve(process.cwd(), process.env.PGDATA_DIR || defaultDir);
         this.pglite = new PGlite(dataDir);
         console.log(`[PostgreSQL] Initialized persistent PostgreSQL 16 engine at ${dataDir}`);
       }

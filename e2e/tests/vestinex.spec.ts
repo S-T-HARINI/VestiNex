@@ -116,4 +116,50 @@ test.describe('VestiNex Platform E2E Tests', () => {
     await expect(page.getByRole('link', { name: /Customer Portal API/i })).toBeVisible();
     await expect(page.getByText('Checkout & Payment Engine')).not.toBeVisible();
   });
+
+  test('Multi-User Privacy: User A and User B maintain completely isolated workspaces', async ({ page }) => {
+    const emailA = `alice_${Date.now()}@vestinex-test.io`;
+    const emailB = `bob_${Date.now()}@vestinex-test.io`;
+
+    // 1. Register User A
+    await page.goto('/register');
+    await page.fill('input[type="text"]', 'Alice Engineer');
+    await page.fill('input[type="email"]', emailA);
+    await page.fill('input[type="password"]', 'password123');
+    await page.getByRole('button', { name: /Complete Registration/i }).click();
+    await page.waitForURL(/.*dashboard/);
+
+    // User A creates Project Alpha
+    await page.goto('/projects/new');
+    await page.fill('input[placeholder*="Customer Portal API"]', 'Alpha Microservice');
+    await page.fill('textarea', 'Private backend service for User A');
+    await page.getByRole('button', { name: /Initialize Project/i }).click();
+    await page.waitForURL((url) => url.pathname.startsWith('/projects/') && !url.pathname.endsWith('/new'));
+    const urlAlpha = page.url();
+
+    // User A signs out via user menu
+    await page.goto('/dashboard');
+    await page.getByRole('img', { name: /Alice/i }).click();
+    await page.getByRole('button', { name: /Sign Out/i }).click();
+    await page.waitForURL(/.*login/);
+
+    // 2. Register User B independently
+    await page.goto('/register');
+    await page.fill('input[type="text"]', 'Bob Architect');
+    await page.fill('input[type="email"]', emailB);
+    await page.fill('input[type="password"]', 'password123');
+    await page.getByRole('button', { name: /Complete Registration/i }).click();
+    await page.waitForURL(/.*dashboard/);
+
+    // Verify User B sees clean empty onboarding and 0 projects
+    await expect(page.getByText('Welcome to Your Clean Engineering Workspace')).toBeVisible();
+    await page.goto('/projects');
+    await expect(page.getByText('No Projects Configured')).toBeVisible();
+    await expect(page.getByText('Alpha Microservice')).not.toBeVisible();
+    await expect(page.getByText('Checkout & Payment Engine')).not.toBeVisible();
+
+    // Verify User B cannot access User A project URL directly
+    await page.goto(urlAlpha);
+    await expect(page.getByText('Project not found or access denied.')).toBeVisible({ timeout: 10000 });
+  });
 });

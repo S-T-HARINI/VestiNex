@@ -453,4 +453,175 @@ describe('VestiNex Backend API Integration Tests', () => {
 
     expect(unauthorizedProjRes.status).toBe(403);
   });
+
+  // 23. Multi-User Workspace Isolation (User A vs User B) & Collaboration
+  it('Verifies complete workspace isolation between User A and User B, and explicit collaboration', async () => {
+    const emailA = `usera_${Date.now()}@example.com`;
+    const emailB = `userb_${Date.now()}@example.com`;
+
+    // 1. Register User A
+    const resA = await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'Alice Engineer', email: emailA, password: 'password123' });
+    const cookieA = resA.headers['set-cookie'][0];
+    const userA = resA.body.user;
+
+    // Verify User A has 0 projects, 0 deployments, 0 incidents
+    const projResA0 = await request(app).get('/api/projects').set('Cookie', cookieA);
+    expect(projResA0.body.projects).toEqual([]);
+
+    // User A creates Project A
+    const createProjARes = await request(app)
+      .post('/api/projects')
+      .set('Cookie', cookieA)
+      .send({
+        name: 'Project Alpha Gateway',
+        description: 'Private core gateway for User A',
+        environment: 'PRODUCTION',
+      });
+    const projectAId = createProjARes.body.project.id;
+
+    // User A records a deployment and creates an incident in Project A
+    const depResA = await request(app)
+      .post(`/api/projects/${projectAId}/deployments`)
+      .set('Cookie', cookieA)
+      .send({
+        environment: 'PRODUCTION',
+        version: 'v1.0.0-alpha',
+        commitSha: 'abc1234',
+        branch: 'main',
+        status: 'SUCCESSFUL',
+      });
+    const depAId = depResA.body.deployment.id;
+
+    const incResA = await request(app)
+      .post(`/api/projects/${projectAId}/incidents`)
+      .set('Cookie', cookieA)
+      .send({
+        title: 'Redis Connection Timeout on Alpha Gateway',
+        description: 'Connection pool saturated under burst traffic',
+        severity: 'HIGH',
+        status: 'OPEN',
+      });
+    const incAId = incResA.body.incident.id;
+
+    // User A comments on the incident
+    await request(app)
+      .post(`/api/incidents/${incAId}/comments`)
+      .set('Cookie', cookieA)
+      .send({ content: 'Investigating socket pool contention' });
+
+    // 2. Register User B independently
+    const resB = await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'Bob Architect', email: emailB, password: 'password123' });
+    const cookieB = resB.headers['set-cookie'][0];
+    const userB = resB.body.user;
+
+    // Verify User B starts with 0 projects
+    const projResB0 = await request(app).get('/api/projects').set('Cookie', cookieB);
+    expect(projResB0.body.projects).toEqual([]);
+
+    // Verify User B overview has 0 stats and empty trends
+    const overviewB = await request(app).get('/api/dashboard/overview').set('Cookie', cookieB);
+    expect(overviewB.body.stats.totalProjects).toBe(0);
+    expect(overviewB.body.stats.totalDeployments).toBe(0);
+    expect(overviewB.body.stats.totalIncidents).toBe(0);
+
+    // Verify User B CANNOT access Project A
+    const getProjAB = await request(app).get(`/api/projects/${projectAId}`).set('Cookie', cookieB);
+    expect(getProjAB.status).toBe(403);
+
+    // Verify User B CANNOT access Project A deployments or incidents
+    const getDepAB = await request(app).get(`/api/deployments/${depAId}`).set('Cookie', cookieB);
+    expect(getDepAB.status).toBe(403);
+
+    const getIncAB = await request(app).get(`/api/incidents/${incAId}`).set('Cookie', cookieB);
+    expect(getIncAB.status).toBe(403);
+
+    const getIncCommAB = await request(app).get(`/api/incidents/${incAId}/comments`).set('Cookie', cookieB);
+    expect(getIncCommAB.status).toBe(403);
+
+    // Verify User B CANNOT mutate Project A
+    const mutateIncAB = await request(app)
+      .patch(`/api/incidents/${incAId}`)
+      .set('Cookie', cookieB)
+      .send({ title: 'Hacked by Bob' });
+    expect(mutateIncAB.status).toBe(403);
+
+    // 3. User B creates Project B
+    const createProjBRes = await request(app)
+      .post('/api/projects')
+      .set('Cookie', cookieB)
+      .send({
+        name: 'Project Beta Ingestion',
+        description: 'User B private service',
+        environment: 'STAGING',
+      });
+    const projectBId = createProjBRes.body.project.id;
+
+    // User B now sees ONLY Project B
+    const projResB1 = await request(app).get('/api/projects').set('Cookie', cookieB);
+    expect(projResB1.body.projects.length).toBe(1);
+    expect(projResB1.body.projects[0].id).toBe(projectBId);
+
+    // User A now sees ONLY Project A
+    const projResA1 = await request(app).get('/api/projects').set('Cookie', cookieA);
+    expect(projResA1.body.projects.length).toBe(1);
+    expect(projResA1.body.projects[0].id).toBe(projectAId);
+
+    // 4. Authorized Collaboration: User A adds User B as DEVELOPER to Project A
+    const addMemberRes = await request(app)
+      .post(`/api/projects/${projectAId}/members`)
+      .set('Cookie', cookieA)
+      .send({
+        email: emailB,
+        role: 'DEVELOPER',
+      });
+    expect(addMemberRes.status).toBe(201);
+
+    // Now User B CAN see Project A
+    const projResB2 = await request(app).get('/api/projects').set('Cookie', cookieB);
+    expect(projResB2.body.projects.length).toBe(2);
+    expect(projResB2.body.projects.some((p: any) => p.id === projectAId)).toBe(true);
+
+    // Now User B CAN read Project A incident and collaborate by adding a comment
+    const commentResB = await request(app)
+      .post(`/api/incidents/${incAId}/comments`)
+      .set('Cookie', cookieB)
+      .send({ content: 'Confirmed pool exhaustion; increased max connections to 50' });
+    expect(commentResB.status).toBe(201);
+
+    // 5. User A removes User B from Project A
+    const removeRes = await request(app)
+      .delete(`/api/projects/${projectAId}/members/${userB.id}`)
+      .set('Cookie', cookieA);
+    expect(removeRes.status).toBe(200);
+
+    // Once removed, User B is immediately rejected again
+    const postRemovalGet = await request(app).get(`/api/projects/${projectAId}`).set('Cookie', cookieB);
+    expect(postRemovalGet.status).toBe(403);
+  });
+
+  // 24. Test Fixtures and LIVE_RESTART_TEST Isolation
+  it('Guarantees test fixtures and LIVE_RESTART_TEST records never leak into normal user queries', async () => {
+    const { pgDb } = await import('../src/lib/postgres');
+
+    // Query incidents directly to ensure no uncleaned LIVE_RESTART_TEST records exist in active database
+    const leakedRecords = await pgDb.query<any>(
+      "SELECT * FROM incidents WHERE title LIKE '%LIVE_RESTART_TEST%';"
+    );
+    expect(leakedRecords.length).toBe(0);
+
+    // Query project members to ensure no demo project has unexpected non-demo members
+    const demoProjectIds = ['prj_vestinex_core', 'prj_auth_sso', 'prj_order_stream'];
+    const seedUserIds = ['usr_admin_001', 'usr_dev_002', 'usr_lead_003', 'usr_viewer_004'];
+
+    const invalidMembers = await pgDb.query<any>(
+      `SELECT * FROM project_members
+       WHERE project_id = ANY($1) AND user_id != ALL($2);`,
+      [demoProjectIds, seedUserIds]
+    );
+    expect(invalidMembers.length).toBe(0);
+  });
 });

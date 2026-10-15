@@ -25,21 +25,29 @@ export class AuditService {
     };
   }
 
-  async list(filters?: { entityType?: string; entityId?: string }) {
+  async list(userId: string, filters?: { entityType?: string; entityId?: string }) {
+    // Determine user's authorized projects
+    const userProjects = await pgDb.query<{ project_id: string }>(
+      'SELECT project_id FROM project_members WHERE user_id = $1;',
+      [userId]
+    );
+    const authorizedProjectIds = userProjects.map((p) => p.project_id);
+
     let sql = `
       SELECT al.*, u.name as "userName", u.email as "userEmail"
       FROM audit_logs al
       LEFT JOIN users u ON u.id = al.user_id
+      WHERE (al.user_id = $1 OR al.entity_id = ANY($2))
     `;
-    const params: any[] = [];
+    const params: any[] = [userId, authorizedProjectIds];
 
     if (filters?.entityType) {
       params.push(filters.entityType);
-      sql += ` WHERE al.entity_type = $${params.length}`;
+      sql += ` AND al.entity_type = $${params.length}`;
     }
     if (filters?.entityId) {
       params.push(filters.entityId);
-      sql += params.length === 1 ? ` WHERE al.entity_id = $${params.length}` : ` AND al.entity_id = $${params.length}`;
+      sql += ` AND al.entity_id = $${params.length}`;
     }
 
     sql += ' ORDER BY al.created_at DESC LIMIT 100;';
