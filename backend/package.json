@@ -13,7 +13,8 @@
     "prisma:migrate": "prisma migrate dev --schema=../prisma/schema.prisma",
     "prisma:push": "prisma db push --schema=../prisma/schema.prisma",
     "prisma:seed": "tsx src/scripts/seed.ts",
-    "persistence:verify": "tsx src/scripts/verify-persistence.ts"
+    "persistence:verify": "tsx src/scripts/verify-persistence.ts",
+    "persistence:restart": "tsx src/scripts/test-live-restart-persistence.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.10",

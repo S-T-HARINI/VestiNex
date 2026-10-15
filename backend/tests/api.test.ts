@@ -346,4 +346,42 @@ describe('VestiNex Backend API Integration Tests', () => {
       .send({ status: 'FAILED' });
     expect(statusRes.status).toBe(403);
   });
+
+  // 21. Database Persistence Across Server Restart Cycle
+  it('Verifies database records persist across close and re-initialization (restart cycle)', async () => {
+    const { pgDb } = await import('../src/lib/postgres');
+    const testIncidentId = `inc_restart_test_${Date.now()}`;
+    const now = new Date().toISOString();
+
+    // Insert record
+    await pgDb.query(
+      `INSERT INTO incidents (id, project_id, title, description, severity, status, reported_by_id, occurred_at, ingested_at, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+      [
+        testIncidentId,
+        createdProjectId,
+        'Restart Cycle Persistence Test',
+        'Verifying persistence across simulated restart',
+        'LOW',
+        'OPEN',
+        'usr_admin_001',
+        now,
+        now,
+        now,
+        now,
+      ]
+    );
+
+    // Simulate database shutdown and restart
+    await pgDb.close();
+    await pgDb.init();
+
+    // Verify record exists
+    const records = await pgDb.query<any>('SELECT * FROM incidents WHERE id = $1', [testIncidentId]);
+    expect(records.length).toBe(1);
+    expect(records[0].title).toBe('Restart Cycle Persistence Test');
+
+    // Clean up test record
+    await pgDb.query('DELETE FROM incidents WHERE id = $1', [testIncidentId]);
+  });
 });

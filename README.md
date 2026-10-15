@@ -167,14 +167,17 @@ This orchestrates:
 ```bash
 cd backend
 npm test
-# Result: 20/20 integration tests passed across Auth, Projects, Deployments, Incidents, Timeline, and Persistence
+# Result: 21/21 integration tests passed across Auth, Projects, Deployments, Incidents, Timeline, and Restart Persistence
 ```
 
-### Database Persistence Verification
+### Database Persistence & Restart Verification
 ```bash
 cd backend
 npm run persistence:verify
 # Result: Verifies disk-backed recovery across Users, Projects, Deployments, Incidents, and Timeline events
+
+npm run persistence:restart
+# Result: Simulates database close and re-initialization, asserting record persistence across restart cycles
 ```
 
 ### Frontend Production Build
@@ -190,7 +193,7 @@ cd e2e
 npm install
 npx playwright install chromium
 npx playwright test
-# Result: 3/3 E2E test scenarios passed in headless Chromium
+# Result: 6/6 E2E test scenarios passed in headless Chromium
 ```
 
 ---

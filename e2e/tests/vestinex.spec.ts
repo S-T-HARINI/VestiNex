@@ -42,4 +42,42 @@ test.describe('VestiNex Platform E2E Tests', () => {
     await expect(page.getByText('Deployment Correlation Leads')).toBeVisible();
     await expect(page.getByText('Evidence Policy')).toBeVisible();
   });
+
+  test('Unauthenticated access to protected routes redirects to /login', async ({ page }) => {
+    await page.goto('/dashboard');
+    await page.waitForURL(/.*login/);
+    await expect(page.getByRole('button', { name: /Sign In to Workspace/i })).toBeVisible();
+  });
+
+  test('User authentication lifecycle: Fast demo login and subsequent sign-out', async ({ page }) => {
+    await page.goto('/login');
+    await page.getByRole('button', { name: /Platform Lead/i }).click();
+    await page.waitForURL(/.*dashboard/);
+
+    // Click User menu avatar and sign out
+    await page.getByRole('img', { name: /Sarah Chen/i }).click();
+    await page.getByRole('button', { name: /Sign Out/i }).click();
+
+    // Verify redirected back to login page
+    await page.waitForURL(/.*login/);
+    await expect(page.getByRole('button', { name: /Sign In to Workspace/i })).toBeVisible();
+  });
+
+  test('Project Chronological Timeline displays reconstructed events and latency filters', async ({ page }) => {
+    await page.goto('/login');
+    await page.getByRole('button', { name: /Platform Lead/i }).click();
+    await page.waitForURL(/.*dashboard/);
+
+    // Open project
+    await page.getByText('Checkout & Payment Engine').first().click();
+    await expect(page.getByText('Recurring Incident Patterns')).toBeVisible();
+
+    // Navigate to Chronological Timeline
+    await page.getByRole('link', { name: /Chronological Timeline/i }).click();
+    await page.waitForURL(/.*\/timeline/);
+
+    // Verify timeline header and explanation
+    await expect(page.getByText('Unified Chronological Event Timeline')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Reconstructing true event occurrence')).toBeVisible();
+  });
 });

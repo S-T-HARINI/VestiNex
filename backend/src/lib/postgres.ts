@@ -103,6 +103,19 @@ export class PostgresService {
     }
   }
 
+  async close(): Promise<void> {
+    if (this.pool) {
+      await this.pool.end();
+      this.pool = null;
+    }
+    if (this.pglite) {
+      await this.pglite.close();
+      this.pglite = null;
+    }
+    this.isInitialized = false;
+    this.initPromise = null;
+  }
+
   private async applyMigration() {
     try {
       // Check if migration has already been applied
