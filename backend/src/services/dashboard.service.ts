@@ -3,20 +3,10 @@ import { AppError } from '../middleware/errorHandler';
 
 export class DashboardService {
   async getGlobalOverview(userId: string) {
-    const userRows = await pgDb.query<{ role: string }>('SELECT role FROM users WHERE id = $1 LIMIT 1;', [userId]);
-    const isSystemAdmin = userRows.length > 0 && userRows[0].role === 'ADMIN';
-
-    let projectIdsSql = '';
-    let params: any[] = [];
-
-    if (isSystemAdmin) {
-      projectIdsSql = 'SELECT id FROM projects WHERE status = \'ACTIVE\'';
-    } else {
-      projectIdsSql = 'SELECT project_id as id FROM project_members WHERE user_id = $1';
-      params = [userId];
-    }
-
-    const projectRows = await pgDb.query<{ id: string }>(projectIdsSql, params);
+    const projectRows = await pgDb.query<{ id: string }>(
+      'SELECT project_id as id FROM project_members WHERE user_id = $1;',
+      [userId]
+    );
     const projectIds = projectRows.map((p) => p.id);
 
     if (projectIds.length === 0) {
@@ -25,7 +15,7 @@ export class DashboardService {
         totalDeployments: 0,
         successfulDeployments: 0,
         failedDeployments: 0,
-        deploymentSuccessRate: 100,
+        deploymentSuccessRate: 0,
         totalIncidents: 0,
         openIncidents: 0,
         criticalIncidents: 0,
@@ -99,25 +89,19 @@ export class DashboardService {
       [projectIds]
     );
 
-    const trendData = trendRows.length > 0
-      ? trendRows.map((r) => ({
-          date: r.date,
-          deployments: parseInt(r.deployments, 10) || 0,
-          incidents: parseInt(r.incidents, 10) || 0,
-          successful: parseInt(r.successful, 10) || 0,
-        }))
-      : [
-          { date: 'Feb 10', deployments: 1, incidents: 0, successful: 1 },
-          { date: 'Feb 14', deployments: 2, incidents: 1, successful: 2 },
-          { date: 'Feb 15', deployments: 1, incidents: 1, successful: 0 },
-        ];
+    const trendData = trendRows.map((r) => ({
+      date: r.date,
+      deployments: parseInt(r.deployments, 10) || 0,
+      incidents: parseInt(r.incidents, 10) || 0,
+      successful: parseInt(r.successful, 10) || 0,
+    }));
 
     return {
       totalProjects: projectIds.length,
       totalDeployments,
       successfulDeployments,
       failedDeployments,
-      deploymentSuccessRate: totalDeployments > 0 ? Math.round((successfulDeployments / totalDeployments) * 100) : 100,
+      deploymentSuccessRate: totalDeployments > 0 ? Math.round((successfulDeployments / totalDeployments) * 100) : 0,
       totalIncidents,
       openIncidents,
       criticalIncidents,
@@ -216,36 +200,33 @@ export class DashboardService {
       [projectId]
     );
 
-    const activityTrend = trendRows.length > 0
-      ? trendRows.map((r) => ({
-          date: r.date,
-          deployments: parseInt(r.deployments, 10) || 0,
-          incidents: parseInt(r.incidents, 10) || 0,
-          successful: parseInt(r.successful, 10) || 0,
-        }))
-      : [
-          { date: 'Feb 10', deployments: 1, incidents: 0, successful: 1 },
-          { date: 'Feb 14', deployments: 2, incidents: 1, successful: 2 },
-          { date: 'Feb 15', deployments: 1, incidents: 1, successful: 0 },
-        ];
+    const activityTrend = trendRows.map((r) => ({
+      date: r.date,
+      deployments: parseInt(r.deployments, 10) || 0,
+      incidents: parseInt(r.incidents, 10) || 0,
+      successful: parseInt(r.successful, 10) || 0,
+    }));
 
-    // Recurring forensic patterns
-    const recurringPatterns = [
-      {
-        pattern: 'Socket connection pool exhaustion under sudden traffic ramp',
-        occurrences: 2,
-        severity: 'CRITICAL',
-        suggestedFix: 'Implement adaptive backpressure and client-side circuit breakers.',
-        firstObserved: '2025-02-14',
-      },
-      {
-        pattern: 'PostgreSQL row-level lock contention on state transition queues',
-        occurrences: 1,
-        severity: 'MEDIUM',
-        suggestedFix: 'Use SELECT FOR UPDATE SKIP LOCKED pattern on batch workers.',
-        firstObserved: '2025-02-15',
-      },
-    ];
+    // Dynamic recurring forensic patterns: detect repeated incidents by title or error signature
+    const patternRows = await pgDb.query<any>(
+      `SELECT title, severity, count(*) as count,
+              MIN(occurred_at) as first_observed
+       FROM incidents
+       WHERE project_id = $1
+       GROUP BY title, severity
+       HAVING count(*) > 1
+       ORDER BY count DESC
+       LIMIT 5;`,
+      [projectId]
+    );
+
+    const recurringPatterns = patternRows.map((p) => ({
+      pattern: p.title,
+      occurrences: parseInt(p.count, 10),
+      severity: p.severity,
+      suggestedFix: `Investigate recurring ${p.severity} pattern on "${p.title}" across recent deployment diffs.`,
+      firstObserved: p.first_observed ? new Date(p.first_observed).toISOString().split('T')[0] : 'Recent',
+    }));
 
     return {
       project: {
@@ -260,7 +241,7 @@ export class DashboardService {
         totalDeployments,
         successfulDeployments,
         failedDeployments,
-        deploymentSuccessRate: totalDeployments > 0 ? Math.round((successfulDeployments / totalDeployments) * 100) : 100,
+        deploymentSuccessRate: totalDeployments > 0 ? Math.round((successfulDeployments / totalDeployments) * 100) : 0,
         totalIncidents,
         openIncidents,
         criticalIncidents,

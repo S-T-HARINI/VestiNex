@@ -2,14 +2,22 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppLayout } from '@/components/layouts/AppLayout';
 import { OperationalMetricsCard } from '@/components/charts/OperationalMetricsCard';
-import { DeploymentTrendsChart } from '@/components/charts/DeploymentTrendsChart';
-import { SeverityDistributionChart } from '@/components/charts/SeverityDistributionChart';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+
+const DeploymentTrendsChart = dynamic(
+  () => import('@/components/charts/DeploymentTrendsChart').then((m) => m.DeploymentTrendsChart),
+  { ssr: false }
+);
+const SeverityDistributionChart = dynamic(
+  () => import('@/components/charts/SeverityDistributionChart').then((m) => m.SeverityDistributionChart),
+  { ssr: false }
+);
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -110,6 +118,37 @@ export default function ProjectDashboardPage() {
           </div>
         </div>
 
+        {/* Onboarding Guidance Banner for Fresh Projects */}
+        {summary && summary.totalDeployments === 0 && summary.totalIncidents === 0 && (
+          <div className="rounded-lg border border-indigo-500/20 bg-indigo-950/20 p-5 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-indigo-400" />
+                  <span>Project Initialized — Ready for Telemetry & Monitoring</span>
+                </h3>
+                <p className="text-xs text-slate-400 max-w-xl">
+                  This project workspace is active. Record your first deployment to establish version baselines, or report an incident to begin chronological forensic correlation.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Link href={`/projects/${projectId}/deployments/new`}>
+                  <Button size="sm" className="h-8 text-xs bg-indigo-600 hover:bg-indigo-500 text-white gap-1.5">
+                    <Rocket className="h-3.5 w-3.5" />
+                    <span>Record Deployment</span>
+                  </Button>
+                </Link>
+                <Link href={`/projects/${projectId}/incidents/new`}>
+                  <Button size="sm" variant="outline" className="h-8 text-xs border-slate-700 hover:bg-slate-800 text-slate-300 gap-1.5">
+                    <AlertOctagon className="h-3.5 w-3.5 text-red-400" />
+                    <span>Report Incident</span>
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Operational Metrics Cards */}
         {summary && <OperationalMetricsCard summary={summary} />}
 
@@ -199,7 +238,13 @@ export default function ProjectDashboardPage() {
             </CardHeader>
             <CardContent className="space-y-2">
               {recentIncidents?.length === 0 ? (
-                <div className="p-4 text-center text-xs text-slate-500">No incidents recorded.</div>
+                <div className="p-6 text-center space-y-2 border border-dashed border-slate-800/80 rounded-md">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-400/80 mx-auto" />
+                  <p className="text-xs font-medium text-slate-300">All systems operating normally</p>
+                  <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
+                    No active or historical incidents reported for this scope.
+                  </p>
+                </div>
               ) : (
                 recentIncidents?.map((inc: any) => (
                   <Link
@@ -240,7 +285,13 @@ export default function ProjectDashboardPage() {
             </CardHeader>
             <CardContent className="space-y-2">
               {recentDeployments?.length === 0 ? (
-                <div className="p-4 text-center text-xs text-slate-500">No deployments recorded.</div>
+                <div className="p-6 text-center space-y-2 border border-dashed border-slate-800/80 rounded-md">
+                  <Rocket className="h-5 w-5 text-cyan-400/80 mx-auto" />
+                  <p className="text-xs font-medium text-slate-300">No deployments logged yet</p>
+                  <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
+                    Record your release builds to establish a baseline for incident correlation.
+                  </p>
+                </div>
               ) : (
                 recentDeployments?.map((dep: any) => (
                   <Link

@@ -8,38 +8,18 @@ export class ProjectService {
     const userRows = await pgDb.query<{ role: string }>('SELECT role FROM users WHERE id = $1 LIMIT 1;', [userId]);
     if (userRows.length === 0) throw new AppError('User not found', 404);
 
-    const isSystemAdmin = userRows[0].role === 'ADMIN';
+    const sql = `
+      SELECT p.*,
+        pm.role as role,
+        (SELECT COUNT(*) FROM project_members WHERE project_id = p.id) as "memberCount",
+        (SELECT COUNT(*) FROM deployments WHERE project_id = p.id) as "deploymentCount",
+        (SELECT COUNT(*) FROM incidents WHERE project_id = p.id AND status NOT IN ('RESOLVED', 'CLOSED')) as "incidentCount"
+      FROM projects p
+      INNER JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = $1
+      ORDER BY p.created_at DESC;
+    `;
 
-    let sql = '';
-    let params: any[] = [];
-
-    if (isSystemAdmin) {
-      sql = `
-        SELECT p.*,
-          COALESCE(pm.role, 'ADMIN') as role,
-          (SELECT COUNT(*) FROM project_members WHERE project_id = p.id) as "memberCount",
-          (SELECT COUNT(*) FROM deployments WHERE project_id = p.id) as "deploymentCount",
-          (SELECT COUNT(*) FROM incidents WHERE project_id = p.id AND status NOT IN ('RESOLVED', 'CLOSED')) as "incidentCount"
-        FROM projects p
-        LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = $1
-        ORDER BY p.created_at DESC;
-      `;
-      params = [userId];
-    } else {
-      sql = `
-        SELECT p.*,
-          pm.role as role,
-          (SELECT COUNT(*) FROM project_members WHERE project_id = p.id) as "memberCount",
-          (SELECT COUNT(*) FROM deployments WHERE project_id = p.id) as "deploymentCount",
-          (SELECT COUNT(*) FROM incidents WHERE project_id = p.id AND status NOT IN ('RESOLVED', 'CLOSED')) as "incidentCount"
-        FROM projects p
-        INNER JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = $1
-        ORDER BY p.created_at DESC;
-      `;
-      params = [userId];
-    }
-
-    const rows = await pgDb.query<any>(sql, params);
+    const rows = await pgDb.query<any>(sql, [userId]);
     return rows.map((p) => ({
       id: p.id,
       name: p.name,

@@ -78,10 +78,13 @@ export default function NewProjectPage() {
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Ingestion Pipeline Broker"
+                  placeholder="e.g. Customer Portal API, Mobile Banking Backend, E-Commerce Storefront, SaaS Auth Service"
                   required
                   className="bg-slate-950 text-xs"
                 />
+                <p className="text-[11px] text-slate-500">
+                  Name any software system, mobile app, API microservice, or backend pipeline.
+                </p>
               </div>
 
               <div className="space-y-1">
@@ -89,7 +92,7 @@ export default function NewProjectPage() {
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Service architecture, core dependencies, and mission-critical SLAs..."
+                  placeholder="Overview of this service scope, architecture, core dependencies, or mission-critical SLAs..."
                   className="w-full rounded-md border border-slate-700 bg-slate-950 p-2 text-xs text-slate-200 h-24 focus:outline-none focus:border-indigo-500"
                 />
               </div>
@@ -99,7 +102,7 @@ export default function NewProjectPage() {
                 <Input
                   value={repoUrl}
                   onChange={(e) => setRepoUrl(e.target.value)}
-                  placeholder="https://github.com/S-T-HARINI/VestiNex.git"
+                  placeholder="https://github.com/your-org/your-repo.git"
                   type="url"
                   className="bg-slate-950 text-xs"
                 />

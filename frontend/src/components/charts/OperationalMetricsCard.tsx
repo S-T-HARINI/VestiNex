@@ -20,7 +20,9 @@ export function OperationalMetricsCard({ summary }: Props) {
     {
       label: 'Open Incidents',
       value: summary.openIncidents,
-      subValue: `${summary.criticalIncidents} Critical Severity`,
+      subValue: summary.totalIncidents > 0
+        ? `${summary.criticalIncidents} Critical Severity`
+        : 'No incidents recorded',
       icon: AlertOctagon,
       color: summary.criticalIncidents > 0 ? 'text-red-400' : 'text-slate-200',
       border: summary.criticalIncidents > 0 ? 'border-red-500/30' : 'border-slate-800',
@@ -28,28 +30,30 @@ export function OperationalMetricsCard({ summary }: Props) {
     },
     {
       label: 'Deploy Success Rate',
-      value: `${summary.deploymentSuccessRate}%`,
-      subValue: `${summary.successfulDeployments} of ${summary.totalDeployments} Succeeded`,
+      value: summary.totalDeployments > 0 ? `${summary.deploymentSuccessRate}%` : '—',
+      subValue: summary.totalDeployments > 0
+        ? `${summary.successfulDeployments} of ${summary.totalDeployments} Succeeded`
+        : 'No deployments recorded',
       icon: CheckCircle2,
-      color: 'text-emerald-400',
+      color: summary.totalDeployments > 0 ? 'text-emerald-400' : 'text-slate-400',
       border: 'border-slate-800',
       bg: 'bg-slate-900/60',
     },
     {
       label: 'Mean Time to Resolution',
       value: summary.mttrMinutes > 0 ? `${summary.mttrMinutes}m` : '—',
-      subValue: 'Based on closed incident life-cycles',
+      subValue: summary.mttrMinutes > 0 ? 'Based on closed incident life-cycles' : 'No resolved incidents yet',
       icon: Clock,
-      color: 'text-indigo-400',
+      color: summary.mttrMinutes > 0 ? 'text-indigo-400' : 'text-slate-400',
       border: 'border-slate-800',
       bg: 'bg-slate-900/60',
     },
     {
       label: 'Total Deployments',
       value: summary.totalDeployments,
-      subValue: `${summary.failedDeployments} Failures logged`,
+      subValue: summary.totalDeployments > 0 ? `${summary.failedDeployments} Failures logged` : 'No deployments logged',
       icon: Rocket,
-      color: 'text-cyan-400',
+      color: summary.totalDeployments > 0 ? 'text-cyan-400' : 'text-slate-400',
       border: 'border-slate-800',
       bg: 'bg-slate-900/60',
     },

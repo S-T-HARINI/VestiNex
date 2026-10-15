@@ -29,17 +29,7 @@ export class AuthService {
         [userId, data.email.toLowerCase(), data.name, passwordHash, 'USER', avatarUrl, now, now]
       );
 
-      // 2. Assign to first active project if exists
-      const projects = await client.query<{ id: string }>('SELECT id FROM projects LIMIT 1;');
-      if (projects.length > 0) {
-        await client.query(
-          `INSERT INTO project_members (id, user_id, project_id, role, joined_at)
-           VALUES ($1, $2, $3, $4, $5);`,
-          [`mem_${uuidv4().substring(0, 8)}`, userId, projects[0].id, 'DEVELOPER', now]
-        );
-      }
-
-      // 3. Audit log
+      // 2. Audit log
       await client.query(
         `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7);`,

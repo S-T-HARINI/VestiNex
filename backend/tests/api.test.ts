@@ -384,4 +384,73 @@ describe('VestiNex Backend API Integration Tests', () => {
     // Clean up test record
     await pgDb.query('DELETE FROM incidents WHERE id = $1', [testIncidentId]);
   });
+
+  // 22. Clean Workspace & Data Isolation for New Users
+  it('Verifies new user registration starts with clean workspace (0 projects) and strict isolation', async () => {
+    const uniqueEmail = `clean_user_${Date.now()}@example.com`;
+
+    // 1. Register new user
+    const regRes = await request(app)
+      .post('/api/auth/register')
+      .send({
+        name: 'Jordan Taylor',
+        email: uniqueEmail,
+        password: 'password123',
+      });
+
+    expect(regRes.status).toBe(201);
+    expect(regRes.body.success).toBe(true);
+    expect(regRes.body.user.email).toBe(uniqueEmail);
+
+    const newUserCookie = regRes.headers['set-cookie'][0];
+
+    // 2. Verify new user has 0 projects initially
+    const projRes = await request(app)
+      .get('/api/projects')
+      .set('Cookie', newUserCookie);
+
+    expect(projRes.status).toBe(200);
+    expect(projRes.body.projects).toEqual([]);
+
+    // 3. Verify global overview has 0 stats and empty trends
+    const dashRes = await request(app)
+      .get('/api/dashboard/overview')
+      .set('Cookie', newUserCookie);
+
+    expect(dashRes.status).toBe(200);
+    expect(dashRes.body.stats.totalProjects).toBe(0);
+    expect(dashRes.body.stats.totalDeployments).toBe(0);
+    expect(dashRes.body.stats.totalIncidents).toBe(0);
+    expect(dashRes.body.stats.trendData).toEqual([]);
+
+    // 4. Create first generic project
+    const createRes = await request(app)
+      .post('/api/projects')
+      .set('Cookie', newUserCookie)
+      .send({
+        name: 'Customer Portal API',
+        description: 'REST and GraphQL services for client accounts.',
+        environment: 'PRODUCTION',
+      });
+
+    expect(createRes.status).toBe(201);
+    expect(createRes.body.project.name).toBe('Customer Portal API');
+    const newProjId = createRes.body.project.id;
+
+    // 5. Verify projects list now contains only their project
+    const projRes2 = await request(app)
+      .get('/api/projects')
+      .set('Cookie', newUserCookie);
+
+    expect(projRes2.status).toBe(200);
+    expect(projRes2.body.projects.length).toBe(1);
+    expect(projRes2.body.projects[0].id).toBe(newProjId);
+
+    // 6. Verify user cannot access other projects created earlier
+    const unauthorizedProjRes = await request(app)
+      .get(`/api/projects/${createdProjectId}`)
+      .set('Cookie', newUserCookie);
+
+    expect(unauthorizedProjRes.status).toBe(403);
+  });
 });

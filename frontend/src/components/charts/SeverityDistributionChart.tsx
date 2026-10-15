@@ -20,6 +20,20 @@ const SEVERITY_COLORS: Record<string, string> = {
 };
 
 export function SeverityDistributionChart({ distribution }: Props) {
+  const total =
+    (distribution?.CRITICAL || 0) +
+    (distribution?.HIGH || 0) +
+    (distribution?.MEDIUM || 0) +
+    (distribution?.LOW || 0);
+
+  if (total === 0) {
+    return (
+      <div className="flex h-64 items-center justify-center text-xs text-slate-500">
+        No active or historic incidents reported.
+      </div>
+    );
+  }
+
   const data = [
     { name: 'Critical', count: distribution.CRITICAL, key: 'CRITICAL' },
     { name: 'High', count: distribution.HIGH, key: 'HIGH' },

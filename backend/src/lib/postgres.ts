@@ -156,6 +156,11 @@ export class PostgresService {
         return; // Already seeded
       }
 
+      if (process.env.SEED_DEMO_DATA !== 'true' && process.env.NODE_ENV !== 'test') {
+        console.log('[PostgreSQL Seed] Demo data seeding skipped (SEED_DEMO_DATA is not enabled).');
+        return;
+      }
+
       console.log('[PostgreSQL Seed] Seeding initial forensic demonstration data...');
       const salt = bcrypt.genSaltSync(10);
       const passwordHash = bcrypt.hashSync('password123', salt);
