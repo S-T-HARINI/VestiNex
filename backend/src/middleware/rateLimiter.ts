@@ -2,7 +2,7 @@ import { rateLimit } from 'express-rate-limit';
 
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 20, // 20 requests per 15 min for auth
+  limit: process.env.NODE_ENV === 'production' ? 20 : 1000,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   message: {
@@ -13,7 +13,7 @@ export const authLimiter = rateLimit({
 
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 300,
+  limit: process.env.NODE_ENV === 'production' ? 300 : 10000,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   message: {

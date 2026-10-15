@@ -162,4 +162,32 @@ test.describe('VestiNex Platform E2E Tests', () => {
     await page.goto(urlAlpha);
     await expect(page.getByText('Project not found or access denied.')).toBeVisible({ timeout: 10000 });
   });
+
+  test('GitHub Commit Ingestion: Project with GitHub repository syncs real commits into UI', async ({ page }) => {
+    // 1. Sign in as demo admin
+    await loginAsAdmin(page);
+
+    // 2. Create project with GitHub repo URL
+    await page.goto('/projects/new');
+    const projectName = `GitHub Express Test ${Date.now()}`;
+    await page.fill('input[placeholder*="Customer Portal API"]', projectName);
+    await page.fill('input[placeholder*="github.com"]', 'https://github.com/expressjs/express.git');
+    await page.getByRole('button', { name: /Initialize Project/i }).click();
+    await page.waitForURL((url) => url.pathname.startsWith('/projects/') && !url.pathname.endsWith('/new'));
+
+    // 3. Navigate to Git Commits & Code Changes
+    const projectUrl = page.url();
+    await page.goto(`${projectUrl}/code-changes`);
+
+    await expect(page.getByText('Git Commits & Code Changes')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('button', { name: /Sync GitHub Commits/i })).toBeVisible();
+
+    // 4. Click Sync GitHub Commits
+    await page.getByRole('button', { name: /Sync GitHub Commits/i }).click();
+
+    // 5. Verify success feedback and imported commits
+    await expect(page.getByText(/Successfully imported|already up to date/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('main').first()).toBeVisible({ timeout: 10000 });
+  });
 });
+

@@ -82,6 +82,7 @@ export const api = {
   getCodeChanges: (projectId: string) => request<any>(`/projects/${projectId}/code-changes`),
   getCodeChange: (id: string) => request<any>(`/code-changes/${id}`),
   recordCodeChange: (projectId: string, data: any) => request<any>(`/projects/${projectId}/code-changes`, { method: 'POST', body: JSON.stringify(data) }),
+  syncCodeChanges: (projectId: string) => request<any>(`/projects/${projectId}/code-changes/sync`, { method: 'POST' }),
 
   // Incidents
   getIncidents: (projectId: string, filters?: { severity?: string; status?: string }) => {

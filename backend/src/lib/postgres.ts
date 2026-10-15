@@ -158,8 +158,8 @@ export class PostgresService {
         return; // Already seeded
       }
 
-      if (process.env.SEED_DEMO_DATA !== 'true' && process.env.NODE_ENV !== 'test') {
-        console.log('[PostgreSQL Seed] Demo data seeding skipped (SEED_DEMO_DATA is not enabled).');
+      if (process.env.SEED_DEMO_DATA === 'false') {
+        console.log('[PostgreSQL Seed] Demo data seeding skipped (SEED_DEMO_DATA=false).');
         return;
       }
 

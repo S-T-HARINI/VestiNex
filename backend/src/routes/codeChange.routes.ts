@@ -27,6 +27,16 @@ router.post('/projects/:projectId/code-changes', authenticate, requireProjectRol
   }
 });
 
+// Sync commits from GitHub repository
+router.post('/projects/:projectId/code-changes/sync', authenticate, requireProjectRole('DEVELOPER'), async (req: Request, res: Response, next) => {
+  try {
+    const result = await codeChangeService.syncGitHubCommits(req.user!.id, req.params.projectId as string);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Get code change detail
 router.get('/code-changes/:id', authenticate, requireCodeChangeRole('VIEWER'), async (req: Request, res: Response, next) => {
   try {
