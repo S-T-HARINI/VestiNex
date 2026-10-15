@@ -1,0 +1,11 @@
+{
+  "name": "vestinex-e2e",
+  "version": "1.0.0",
+  "description": "Playwright end-to-end tests for VestiNex",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1"
+  }
+}

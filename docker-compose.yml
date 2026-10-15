@@ -1,0 +1,74 @@
+services:
+  # ── PostgreSQL Database ─────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: vestinex_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vestinex}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vestinex_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-vestinex_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vestinex} -d ${POSTGRES_DB:-vestinex_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vestinex-network
+
+  # ── Express Backend ─────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vestinex_backend
+    restart: unless-stopped
+    ports:
+      - "${PORT:-4000}:4000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=4000
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-vestinex}:${POSTGRES_PASSWORD:-vestinex_dev_password}@postgres:5432/${POSTGRES_DB:-vestinex_db}?schema=public
+      - SESSION_SECRET=${SESSION_SECRET:-dev-session-secret-change-in-production}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - ./prisma:/app/prisma
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - vestinex-network
+
+  # ── Next.js Frontend ────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: vestinex_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:4000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+    networks:
+      - vestinex-network
+
+volumes:
+  pgdata:
+    driver: local
+
+networks:
+  vestinex-network:
+    driver: bridge

@@ -1,0 +1,277 @@
+openapi: 3.0.3
+info:
+  title: VestiNex REST API
+  description: Incident Intelligence & Deployment Monitoring Platform API. Connects deployments, code changes, incidents, and chronological event streams into a unified failure investigation platform.
+  version: 1.0.0
+servers:
+  - url: http://localhost:4000/api
+    description: Local Development Server
+paths:
+  /auth/register:
+    post:
+      summary: Register new user
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 6 }
+      responses:
+        201:
+          description: User registered successfully
+        400:
+          description: Validation error or email conflict
+
+  /auth/login:
+    post:
+      summary: Authenticate user & establish session
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        200:
+          description: Logged in successfully
+        401:
+          description: Invalid credentials
+
+  /auth/me:
+    get:
+      summary: Get current authenticated user profile
+      tags: [Authentication]
+      responses:
+        200:
+          description: User profile
+        401:
+          description: Unauthorized
+
+  /auth/logout:
+    post:
+      summary: Terminate session
+      tags: [Authentication]
+      responses:
+        200:
+          description: Logged out successfully
+
+  /projects:
+    get:
+      summary: List accessible projects
+      tags: [Projects]
+      responses:
+        200:
+          description: List of projects
+    post:
+      summary: Create new software project
+      tags: [Projects]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, environment]
+              properties:
+                name: { type: string }
+                description: { type: string }
+                repoUrl: { type: string }
+                environment: { type: string, enum: [DEVELOPMENT, STAGING, PRODUCTION] }
+      responses:
+        201:
+          description: Project created
+
+  /projects/{id}:
+    get:
+      summary: Get project details
+      tags: [Projects]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        200:
+          description: Project details
+    patch:
+      summary: Update project configuration
+      tags: [Projects]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        200:
+          description: Project updated
+
+  /projects/{id}/timeline:
+    get:
+      summary: Retrieve unified chronological event timeline
+      tags: [Timeline]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: type
+          in: query
+          schema: { type: string }
+        - name: delayedOnly
+          in: query
+          schema: { type: boolean }
+        - name: outOfOrderOnly
+          in: query
+          schema: { type: boolean }
+      responses:
+        200:
+          description: Chronological event stream with telemetry latency calculations
+
+  /projects/{id}/dashboard:
+    get:
+      summary: Get project operational dashboard metrics
+      tags: [Dashboard]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        200:
+          description: Operational statistics including MTTR, severity distributions, and recurring patterns
+
+  /projects/{projectId}/deployments:
+    get:
+      summary: List deployments for a project
+      tags: [Deployments]
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: environment
+          in: query
+          schema: { type: string, enum: [DEVELOPMENT, STAGING, PRODUCTION] }
+        - name: status
+          in: query
+          schema: { type: string, enum: [PENDING, RUNNING, SUCCESSFUL, FAILED, ROLLED_BACK] }
+      responses:
+        200:
+          description: List of deployments
+    post:
+      summary: Record new deployment
+      tags: [Deployments]
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        201:
+          description: Deployment recorded
+
+  /deployments/{id}/status:
+    patch:
+      summary: Transition deployment lifecycle status
+      tags: [Deployments]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        200:
+          description: Deployment status transitioned and logged in audit history
+
+  /projects/{projectId}/incidents:
+    get:
+      summary: List incidents for a project
+      tags: [Incidents]
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: severity
+          in: query
+          schema: { type: string, enum: [CRITICAL, HIGH, MEDIUM, LOW] }
+        - name: status
+          in: query
+          schema: { type: string, enum: [OPEN, INVESTIGATING, IDENTIFIED, MONITORING, RESOLVED, CLOSED] }
+      responses:
+        200:
+          description: Incidents list
+    post:
+      summary: Report new production failure incident
+      tags: [Incidents]
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        201:
+          description: Incident created
+
+  /incidents/{id}:
+    get:
+      summary: Get incident investigation workspace details
+      tags: [Incidents]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        200:
+          description: Detailed incident with suggested deployment correlations, comments, and status history
+
+  /incidents/{id}/status:
+    patch:
+      summary: Update incident workflow status
+      tags: [Incidents]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        200:
+          description: Incident status updated
+
+  /incidents/{id}/link-deployment:
+    post:
+      summary: Link incident to suspect deployment (evidence-based correlation)
+      tags: [Incidents]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        200:
+          description: Deployment linked to incident
+
+  /incidents/{id}/comments:
+    post:
+      summary: Add investigation comment / runbook observation
+      tags: [Incidents]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        201:
+          description: Comment added

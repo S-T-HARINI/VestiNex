@@ -1,0 +1,339 @@
+// ═══════════════════════════════════════════════════════════
+// VestiNex — Prisma Schema
+// Incident Intelligence & Deployment Monitoring Platform
+// ═══════════════════════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ────────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum ProjectRole {
+  OWNER
+  ADMIN
+  DEVELOPER
+  VIEWER
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum Environment {
+  DEVELOPMENT
+  STAGING
+  PRODUCTION
+}
+
+enum DeploymentStatus {
+  PENDING
+  RUNNING
+  SUCCESSFUL
+  FAILED
+  ROLLED_BACK
+}
+
+enum IncidentSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum IncidentStatus {
+  OPEN
+  INVESTIGATING
+  IDENTIFIED
+  MONITORING
+  RESOLVED
+  CLOSED
+}
+
+enum TimelineEventType {
+  DEPLOYMENT_CREATED
+  DEPLOYMENT_STATUS_CHANGED
+  INCIDENT_CREATED
+  INCIDENT_STATUS_CHANGED
+  INCIDENT_ASSIGNED
+  INCIDENT_RESOLVED
+  CODE_CHANGE_RECORDED
+  MEMBER_ADDED
+  MEMBER_REMOVED
+  COMMENT_ADDED
+  PROJECT_CREATED
+  PROJECT_UPDATED
+}
+
+// ── Models ───────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String   @map("password_hash")
+  role         UserRole @default(USER)
+  avatarUrl    String?  @map("avatar_url")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  projectMemberships ProjectMember[]
+  reportedIncidents  Incident[]       @relation("ReportedBy")
+  assignedIncidents  Incident[]       @relation("AssignedTo")
+  comments           Comment[]
+  auditLogs          AuditLog[]
+  deploymentStatusChanges DeploymentStatusHistory[] @relation("StatusChangedBy")
+  incidentStatusChanges   IncidentStatusHistory[]   @relation("IncidentStatusChangedBy")
+  incidentLinks           IncidentDeploymentLink[]  @relation("LinkedBy")
+  triggeredDeployments    Deployment[]              @relation("TriggeredBy")
+
+  @@map("users")
+}
+
+model Session {
+  sid    String   @id @db.VarChar(255)
+  sess   Json     @db.Json
+  expire DateTime @db.Timestamp(6)
+
+  @@index([expire], map: "IDX_session_expire")
+  @@map("session")
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  repoUrl     String?       @map("repo_url")
+  environment Environment   @default(DEVELOPMENT)
+  status      ProjectStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  members     ProjectMember[]
+  deployments Deployment[]
+  incidents   Incident[]
+  codeChanges CodeChange[]
+  timeline    TimelineEvent[]
+
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        String      @id @default(cuid())
+  userId    String      @map("user_id")
+  projectId String      @map("project_id")
+  role      ProjectRole @default(DEVELOPER)
+  joinedAt  DateTime    @default(now()) @map("joined_at")
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@index([projectId])
+  @@map("project_members")
+}
+
+model Deployment {
+  id            String           @id @default(cuid())
+  projectId     String           @map("project_id")
+  environment   Environment
+  version       String?
+  commitSha     String?          @map("commit_sha")
+  branch        String?
+  triggeredById String?          @map("triggered_by_id")
+  status        DeploymentStatus @default(PENDING)
+  startedAt     DateTime?        @map("started_at")
+  completedAt   DateTime?        @map("completed_at")
+  occurredAt    DateTime         @default(now()) @map("occurred_at")
+  ingestedAt    DateTime         @default(now()) @map("ingested_at")
+  buildUrl      String?          @map("build_url")
+  commitUrl     String?          @map("commit_url")
+  releaseNotes  String?          @map("release_notes")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  project       Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  triggeredBy   User?                    @relation("TriggeredBy", fields: [triggeredById], references: [id], onDelete: SetNull)
+  codeChanges   CodeChange[]
+  statusHistory DeploymentStatusHistory[]
+  incidentLinks IncidentDeploymentLink[]
+
+  @@index([projectId, environment, status])
+  @@index([projectId, occurredAt])
+  @@map("deployments")
+}
+
+model DeploymentStatusHistory {
+  id           String           @id @default(cuid())
+  deploymentId String           @map("deployment_id")
+  fromStatus   DeploymentStatus? @map("from_status")
+  toStatus     DeploymentStatus @map("to_status")
+  changedById  String?          @map("changed_by_id")
+  note         String?
+  changedAt    DateTime         @default(now()) @map("changed_at")
+
+  // Relations
+  deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  changedBy  User?      @relation("StatusChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([deploymentId, changedAt])
+  @@map("deployment_status_history")
+}
+
+model CodeChange {
+  id             String   @id @default(cuid())
+  projectId      String   @map("project_id")
+  deploymentId   String?  @map("deployment_id")
+  commitSha      String   @map("commit_sha")
+  message        String
+  author         String
+  branch         String?
+  repoUrl        String?  @map("repo_url")
+  committedAt    DateTime @map("committed_at")
+  pullRequestUrl String?  @map("pull_request_url")
+  filesChanged   String?  @map("files_changed")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relations
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deployment Deployment? @relation(fields: [deploymentId], references: [id], onDelete: SetNull)
+
+  @@unique([commitSha, projectId])
+  @@index([projectId, committedAt])
+  @@map("code_changes")
+}
+
+model Incident {
+  id           String           @id @default(cuid())
+  projectId    String           @map("project_id")
+  title        String
+  description  String?
+  severity     IncidentSeverity
+  status       IncidentStatus   @default(OPEN)
+  reportedById String           @map("reported_by_id")
+  assignedToId String?          @map("assigned_to_id")
+  resolvedAt   DateTime?        @map("resolved_at")
+  resolutionNote String?        @map("resolution_note")
+  occurredAt   DateTime         @default(now()) @map("occurred_at")
+  ingestedAt   DateTime         @default(now()) @map("ingested_at")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  project         Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reportedBy      User                     @relation("ReportedBy", fields: [reportedById], references: [id])
+  assignedTo      User?                    @relation("AssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  comments        Comment[]
+  statusHistory   IncidentStatusHistory[]
+  deploymentLinks IncidentDeploymentLink[]
+
+  @@index([projectId, severity, status])
+  @@index([projectId, occurredAt])
+  @@index([assignedToId])
+  @@map("incidents")
+}
+
+model IncidentStatusHistory {
+  id          String         @id @default(cuid())
+  incidentId  String         @map("incident_id")
+  fromStatus  IncidentStatus? @map("from_status")
+  toStatus    IncidentStatus @map("to_status")
+  changedById String?        @map("changed_by_id")
+  note        String?
+  changedAt   DateTime       @default(now()) @map("changed_at")
+
+  // Relations
+  incident  Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  changedBy User?    @relation("IncidentStatusChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([incidentId, changedAt])
+  @@map("incident_status_history")
+}
+
+model IncidentDeploymentLink {
+  id           String  @id @default(cuid())
+  incidentId   String  @map("incident_id")
+  deploymentId String  @map("deployment_id")
+  confidence   String? // e.g. "high", "medium", "low"
+  linkedById   String? @map("linked_by_id")
+  note         String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  incident   Incident   @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  linkedBy   User?      @relation("LinkedBy", fields: [linkedById], references: [id], onDelete: SetNull)
+
+  @@unique([incidentId, deploymentId])
+  @@map("incident_deployment_links")
+}
+
+model Comment {
+  id         String   @id @default(cuid())
+  incidentId String   @map("incident_id")
+  userId     String   @map("user_id")
+  content    String
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId, createdAt])
+  @@map("comments")
+}
+
+model TimelineEvent {
+  id         String            @id @default(cuid())
+  projectId  String            @map("project_id")
+  type       TimelineEventType
+  title      String
+  description String?
+  metadata   Json?
+  entityId   String?           @map("entity_id")
+  entityType String?           @map("entity_type")
+  occurredAt DateTime          @default(now()) @map("occurred_at")
+  ingestedAt DateTime          @default(now()) @map("ingested_at")
+  createdAt  DateTime          @default(now()) @map("created_at")
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, occurredAt])
+  @@index([entityType, entityId])
+  @@map("timeline_events")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?  @map("user_id")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  changes    Json?
+  ipAddress  String?  @map("ip_address")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([userId, createdAt])
+  @@map("audit_logs")
+}

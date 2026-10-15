@@ -1,0 +1,24 @@
+{
+  "name": "vestinex",
+  "version": "1.0.0",
+  "description": "Incident Intelligence & Deployment Monitoring Platform",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "cd backend && npm run build && cd ../frontend && npm run build",
+    "db:migrate": "cd backend && npx prisma migrate dev",
+    "db:push": "cd backend && npx prisma db push",
+    "db:seed": "cd backend && npx prisma db seed",
+    "db:studio": "cd backend && npx prisma studio",
+    "test": "cd backend && npm test",
+    "test:e2e": "cd e2e && npx playwright test",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
+    "docker:reset": "docker compose down -v && docker compose up --build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
