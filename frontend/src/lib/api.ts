@@ -111,4 +111,7 @@ export const api = {
   getAuditLogs: (filters?: { entityType?: string; entityId?: string }) => {
     return request<any>(`/dashboard/audit${toQueryString(filters)}`);
   },
+  getProjectAuditLogs: (projectId: string, filters?: { entityType?: string; entityId?: string }) => {
+    return request<any>(`/projects/${projectId}/audit${toQueryString(filters)}`);
+  },
 };

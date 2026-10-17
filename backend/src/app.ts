@@ -9,6 +9,7 @@ import deploymentRoutes from './routes/deployment.routes';
 import codeChangeRoutes from './routes/codeChange.routes';
 import incidentRoutes from './routes/incident.routes';
 import dashboardRoutes from './routes/dashboard.routes';
+import webhookRoutes from './routes/webhook.routes';
 import { errorHandler } from './middleware/errorHandler';
 import { apiLimiter } from './middleware/rateLimiter';
 
@@ -44,7 +45,13 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
@@ -93,6 +100,7 @@ app.use('/api', deploymentRoutes);
 app.use('/api', codeChangeRoutes);
 app.use('/api', incidentRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/webhooks', webhookRoutes);
 
 // Global Error Handler
 app.use(errorHandler);

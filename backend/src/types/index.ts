@@ -183,6 +183,7 @@ export interface TimelineEvent {
 export interface AuditLog {
   id: string;
   userId?: string | null;
+  projectId?: string | null;
   action: string;
   entityType: string;
   entityId: string;
@@ -190,4 +191,14 @@ export interface AuditLog {
   ipAddress?: string | null;
   createdAt: Date;
   user?: User | null;
+}
+
+export interface WebhookDelivery {
+  id: string;
+  deliveryId: string;
+  eventType: string;
+  projectId?: string | null;
+  payloadHash?: string | null;
+  status: string;
+  createdAt: Date;
 }

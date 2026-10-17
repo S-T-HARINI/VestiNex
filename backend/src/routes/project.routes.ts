@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { projectService } from '../services/project.service';
 import { timelineService } from '../services/timeline.service';
 import { dashboardService } from '../services/dashboard.service';
+import { realtimeService } from '../services/realtime.service';
+import { auditService } from '../services/audit.service';
 import { authenticate } from '../middleware/auth';
 import { requireProjectRole } from '../middleware/rbac';
 import { validate } from '../middleware/validate';
@@ -119,6 +121,28 @@ router.get('/:id/dashboard', authenticate, requireProjectRole('VIEWER'), async (
   try {
     const data = await dashboardService.getProjectDashboard(req.params.id as string);
     res.json({ success: true, ...data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Real-Time Server-Sent Events (SSE) stream for project workspace
+router.get('/:id/events', authenticate, requireProjectRole('VIEWER'), (req: Request, res: Response) => {
+  realtimeService.subscribe(req.params.id as string, req.user!.id, res);
+  if (req.query.once === 'true') {
+    res.end();
+  }
+});
+
+// Project-scoped audit logs
+router.get('/:id/audit', authenticate, requireProjectRole('VIEWER'), async (req: Request, res: Response, next) => {
+  try {
+    const { entityType, entityId } = req.query;
+    const logs = await auditService.listByProject(req.user!.id, req.params.id as string, {
+      entityType: entityType as string,
+      entityId: entityId as string,
+    });
+    res.json({ success: true, logs });
   } catch (err) {
     next(err);
   }

@@ -44,10 +44,14 @@ export default function ProjectSettingsPage() {
   const [newMemberRole, setNewMemberRole] = useState<'ADMIN' | 'DEVELOPER' | 'VIEWER'>('DEVELOPER');
   const [memberError, setMemberError] = useState('');
   const [addingMember, setAddingMember] = useState(false);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
 
   const loadData = async () => {
     try {
-      const res = await api.getProject(projectId);
+      const [res, auditRes] = await Promise.all([
+        api.getProject(projectId),
+        api.getProjectAuditLogs(projectId).catch(() => ({ logs: [] })),
+      ]);
       if (res.project) {
         setProject(res.project);
         setName(res.project.name);
@@ -55,6 +59,9 @@ export default function ProjectSettingsPage() {
         setRepoUrl(res.project.repoUrl || '');
         setEnvironment(res.project.environment);
         setMembers(res.project.members || []);
+      }
+      if (auditRes?.logs) {
+        setAuditLogs(auditRes.logs);
       }
     } catch (err) {
       console.error(err);
@@ -340,6 +347,59 @@ export default function ProjectSettingsPage() {
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Audit Trail & Operational Security History */}
+        <Card className="border border-border bg-card">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
+                <Shield className="h-4 w-4 text-primary" />
+                <span>Audit Trail & Operational History</span>
+              </CardTitle>
+              <Badge variant="outline" className="text-[10px] font-mono">
+                {auditLogs.length} Records
+              </Badge>
+            </div>
+            <CardDescription className="text-xs text-foreground-secondary">
+              Immutable forensic log of security-sensitive operations, membership events, and deployments within this workspace.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {auditLogs.length === 0 ? (
+              <div className="text-center py-6 text-xs text-foreground-muted border border-dashed border-border rounded-md">
+                No audit events recorded for this workspace yet.
+              </div>
+            ) : (
+              <div className="divide-y divide-border max-h-80 overflow-y-auto pr-1">
+                {auditLogs.slice(0, 20).map((log: any) => (
+                  <div key={log.id} className="py-2.5 flex items-start justify-between gap-3 text-xs">
+                    <div className="space-y-0.5 min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="outline" className="text-[9px] font-mono uppercase px-1.5 py-0">
+                          {log.action}
+                        </Badge>
+                        <span className="font-medium text-foreground text-xs">
+                          {log.user?.name || (log.userId ? log.userId : 'Automated / System')}
+                        </span>
+                        <span className="text-[10px] text-foreground-muted font-mono">
+                          ({log.entityType}: {log.entityId?.substring(0, 12)})
+                        </span>
+                      </div>
+                      {log.changes && (
+                        <div className="text-[11px] text-foreground-secondary font-mono truncate max-w-xl">
+                          {typeof log.changes === 'object' ? JSON.stringify(log.changes) : String(log.changes)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-foreground-muted font-mono shrink-0 whitespace-nowrap">
+                      {formatDate(log.createdAt)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { pgDb } from '../lib/postgres';
 import { Project, ProjectRole, ProjectStatus, Environment } from '../types';
 import { AppError } from '../middleware/errorHandler';
+import { realtimeService } from './realtime.service';
 
 export class ProjectService {
   async listProjects(userId: string) {
@@ -127,8 +128,8 @@ export class ProjectService {
 
       // 4. Create Audit Log
       await client.query(
-        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, project_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
         [
           auditId,
           userId,
@@ -136,6 +137,7 @@ export class ProjectService {
           'PROJECT',
           projectId,
           JSON.stringify({ name: data.name, environment: data.environment }),
+          projectId,
           now,
         ]
       );
@@ -179,10 +181,17 @@ export class ProjectService {
       );
 
       await client.query(
-        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
-        [`aud_${uuidv4().substring(0, 8)}`, userId, 'PROJECT_UPDATE', 'PROJECT', projectId, JSON.stringify(data), now]
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, project_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
+        [`aud_${uuidv4().substring(0, 8)}`, userId, 'PROJECT_UPDATE', 'PROJECT', projectId, JSON.stringify(data), projectId, now]
       );
+
+      realtimeService.publish(projectId, {
+        type: 'PROJECT_UPDATED',
+        projectId,
+        name: updatedName,
+        status: updatedStatus,
+      });
 
       return {
         id: projectId,
@@ -240,7 +249,7 @@ export class ProjectService {
     const memberId = `mem_${uuidv4().substring(0, 8)}`;
     const now = new Date();
 
-    return await pgDb.transaction(async (client) => {
+    const result = await pgDb.transaction(async (client) => {
       await client.query(
         `INSERT INTO project_members (id, user_id, project_id, role, joined_at)
          VALUES ($1, $2, $3, $4, $5);`,
@@ -266,9 +275,9 @@ export class ProjectService {
       );
 
       await client.query(
-        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
-        [`aud_${uuidv4().substring(0, 8)}`, userId, 'MEMBER_ADDED', 'PROJECT_MEMBER', memberId, JSON.stringify({ userEmail: targetEmail, role }), now]
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, project_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
+        [`aud_${uuidv4().substring(0, 8)}`, userId, 'MEMBER_ADDED', 'PROJECT_MEMBER', memberId, JSON.stringify({ userEmail: targetEmail, role }), projectId, now]
       );
 
       return {
@@ -285,6 +294,15 @@ export class ProjectService {
         },
       };
     });
+
+    realtimeService.publish(projectId, {
+      type: 'MEMBER_ADDED',
+      memberId,
+      userId: targetUser.id,
+      role,
+    });
+
+    return result;
   }
 
   async updateMemberRole(userId: string, projectId: string, targetUserId: string, newRole: ProjectRole) {
@@ -301,10 +319,17 @@ export class ProjectService {
     await pgDb.transaction(async (client) => {
       await client.query('UPDATE project_members SET role = $1 WHERE id = $2;', [newRole, existing[0].id]);
       await client.query(
-        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
-        [`aud_${uuidv4().substring(0, 8)}`, userId, 'MEMBER_ROLE_UPDATED', 'PROJECT_MEMBER', existing[0].id, JSON.stringify({ oldRole, newRole }), now]
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, project_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
+        [`aud_${uuidv4().substring(0, 8)}`, userId, 'MEMBER_ROLE_UPDATED', 'PROJECT_MEMBER', existing[0].id, JSON.stringify({ oldRole, newRole }), projectId, now]
       );
+    });
+
+    realtimeService.publish(projectId, {
+      type: 'MEMBER_ROLE_UPDATED',
+      memberId: existing[0].id,
+      userId: targetUserId,
+      newRole,
     });
 
     return { id: existing[0].id, userId: targetUserId, projectId, role: newRole };
@@ -322,10 +347,15 @@ export class ProjectService {
     await pgDb.transaction(async (client) => {
       await client.query('DELETE FROM project_members WHERE id = $1;', [existing[0].id]);
       await client.query(
-        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
-        [`aud_${uuidv4().substring(0, 8)}`, userId, 'MEMBER_REMOVED', 'PROJECT_MEMBER', existing[0].id, JSON.stringify({ removedUserId: targetUserId }), now]
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, project_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
+        [`aud_${uuidv4().substring(0, 8)}`, userId, 'MEMBER_REMOVED', 'PROJECT_MEMBER', existing[0].id, JSON.stringify({ removedUserId: targetUserId }), projectId, now]
       );
+    });
+
+    realtimeService.publish(projectId, {
+      type: 'MEMBER_REMOVED',
+      removedUserId: targetUserId,
     });
 
     return { success: true };

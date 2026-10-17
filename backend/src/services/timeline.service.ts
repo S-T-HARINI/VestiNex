@@ -19,7 +19,7 @@ export class TimelineService {
       sql += ` AND type = $${params.length}`;
     }
 
-    sql += ' ORDER BY occurred_at DESC;';
+    sql += ' ORDER BY occurred_at DESC, ingested_at DESC, id DESC;';
 
     const rows = await pgDb.query<any>(sql, params);
 

@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { formatDate, formatTimeRelative } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +28,7 @@ import {
   Info,
   ChevronRight,
   ShieldAlert,
+  Radio,
 } from 'lucide-react';
 
 interface Props {
@@ -38,11 +40,55 @@ interface Props {
 
 export function InvestigationWorkspace({ incident, onRefresh, users, projectId }: Props) {
   const targetProjectId = projectId || incident.projectId || incident.project_id;
+  const { projects } = useAuth();
+  const currentProject = projects.find((p) => p.id === targetProjectId);
+  const isViewer = currentProject?.role === 'VIEWER';
+
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   const [transitionStatus, setTransitionStatus] = useState<string>('');
   const [transitionNote, setTransitionNote] = useState('');
   const [resolutionNote, setResolutionNote] = useState('');
+  const [liveConnected, setLiveConnected] = useState(false);
+
+  // Real-Time Server-Sent Events (SSE) subscription
+  useEffect(() => {
+    if (!targetProjectId || typeof window === 'undefined') return;
+
+    let eventSource: EventSource | null = null;
+    try {
+      eventSource = new EventSource(`/api/projects/${targetProjectId}/events`, {
+        withCredentials: true,
+      });
+
+      eventSource.onopen = () => {
+        setLiveConnected(true);
+      };
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data && data.type && data.type !== 'CONNECTED') {
+            onRefresh();
+          }
+        } catch {
+          // ignore parsing error
+        }
+      };
+
+      eventSource.onerror = () => {
+        setLiveConnected(false);
+      };
+    } catch {
+      setLiveConnected(false);
+    }
+
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+    };
+  }, [targetProjectId]);
   const [showStatusModal, setShowStatusModal] = useState(false);
 
   // Invite member state
@@ -188,6 +234,17 @@ export function InvestigationWorkspace({ incident, onRefresh, users, projectId }
               <span className="text-xs text-foreground-secondary">
                 Occurred: <span className="text-foreground font-mono tabular-nums">{formatDate(incident.occurredAt)}</span>
               </span>
+              {liveConnected && (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Sync
+                </span>
+              )}
+              {isViewer && (
+                <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-500/30">
+                  Observer Mode (Read-Only)
+                </Badge>
+              )}
             </div>
             <h1 className="text-xl font-semibold text-foreground tracking-tight">{incident.title}</h1>
             <p className="text-xs text-foreground-secondary max-w-4xl leading-relaxed">{incident.description}</p>
@@ -196,6 +253,8 @@ export function InvestigationWorkspace({ incident, onRefresh, users, projectId }
           <div className="flex items-center gap-2">
             <Button
               size="sm"
+              disabled={isViewer}
+              title={isViewer ? 'Observer role: Read-only access' : undefined}
               onClick={() => {
                 const nextStatus = statusSteps[Math.min(currentStepIndex + 1, statusSteps.length - 1)];
                 setTransitionStatus(nextStatus);
@@ -453,18 +512,24 @@ export function InvestigationWorkspace({ incident, onRefresh, users, projectId }
               </div>
 
               {/* Add Comment Input */}
-              <form onSubmit={handleAddComment} className="flex gap-2 pt-2">
-                <Input
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Add technical hypothesis, runbook step, or log snippet..."
-                  className="text-xs"
-                />
-                <Button type="submit" size="sm" disabled={submittingComment || !commentText.trim()} className="gap-1.5 text-xs">
-                  <Send className="h-3 w-3" />
-                  <span>Send</span>
-                </Button>
-              </form>
+              {isViewer ? (
+                <div className="pt-2 text-[11px] text-foreground-muted italic">
+                  Observer role: Investigation activity is view-only.
+                </div>
+              ) : (
+                <form onSubmit={handleAddComment} className="flex gap-2 pt-2">
+                  <Input
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Add technical hypothesis, runbook step, or log snippet..."
+                    className="text-xs"
+                  />
+                  <Button type="submit" size="sm" disabled={submittingComment || !commentText.trim()} className="gap-1.5 text-xs">
+                    <Send className="h-3 w-3" />
+                    <span>Send</span>
+                  </Button>
+                </form>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -486,23 +551,28 @@ export function InvestigationWorkspace({ incident, onRefresh, users, projectId }
                     <p className="text-[10px] text-foreground-secondary">
                       Only registered users added to this workspace can be assigned.
                     </p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={openInviteModal}
-                      className="mt-1 text-xs h-7 gap-1"
-                    >
-                      <UserPlus className="h-3 w-3" />
-                      <span>Invite Registered User</span>
-                    </Button>
+                    {!isViewer && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={openInviteModal}
+                        className="mt-1 text-xs h-7 gap-1"
+                      >
+                        <UserPlus className="h-3 w-3" />
+                        <span>Invite Registered User</span>
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   <>
                     <select
+                      disabled={isViewer}
                       value={incident.assignedToId || 'unassigned'}
                       onChange={(e) => handleAssigneeChange(e.target.value)}
-                      className="mt-1 w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                      className={`mt-1 w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent ${
+                        isViewer ? 'opacity-60 cursor-not-allowed' : ''
+                      }`}
                     >
                       <option value="unassigned">Unassigned</option>
                       {users.map((u) => (
@@ -513,14 +583,16 @@ export function InvestigationWorkspace({ incident, onRefresh, users, projectId }
                     </select>
                     <div className="mt-1.5 flex items-center justify-between text-[10px] text-foreground-muted">
                       <span>{users.length} eligible project {users.length === 1 ? 'member' : 'members'}</span>
-                      <button
-                        type="button"
-                        onClick={openInviteModal}
-                        className="text-primary hover:underline font-medium inline-flex items-center gap-1"
-                      >
-                        <UserPlus className="h-3 w-3" />
-                        <span>Invite Member</span>
-                      </button>
+                      {!isViewer && (
+                        <button
+                          type="button"
+                          onClick={openInviteModal}
+                          className="text-primary hover:underline font-medium inline-flex items-center gap-1"
+                        >
+                          <UserPlus className="h-3 w-3" />
+                          <span>Invite Member</span>
+                        </button>
+                      )}
                     </div>
                   </>
                 )}

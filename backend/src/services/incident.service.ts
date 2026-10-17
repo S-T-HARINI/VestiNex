@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { pgDb } from '../lib/postgres';
 import { Incident, IncidentSeverity, IncidentStatus, IncidentDeploymentLink, Comment } from '../types';
 import { AppError } from '../middleware/errorHandler';
+import { realtimeService } from './realtime.service';
 
 export class IncidentService {
   async listIncidents(projectId: string, filters?: { severity?: IncidentSeverity; status?: IncidentStatus }) {
@@ -318,10 +319,10 @@ export class IncidentService {
         ]
       );
 
-      // 5. Create audit log
+      // 5. Create Audit Log
       await client.query(
-        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, project_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
         [
           auditId,
           userId,
@@ -329,6 +330,7 @@ export class IncidentService {
           'INCIDENT',
           incId,
           JSON.stringify({ title: data.title, severity: data.severity, status: initialStatus }),
+          projectId,
           now,
         ]
       );
@@ -350,6 +352,16 @@ export class IncidentService {
         updatedAt: now,
       };
     });
+
+    realtimeService.publish(projectId, {
+      type: 'INCIDENT_CREATED',
+      incidentId: incId,
+      title: data.title,
+      severity: data.severity,
+      status: initialStatus,
+    });
+
+    return result;
   }
 
   async updateIncident(
@@ -409,9 +421,9 @@ export class IncidentService {
       );
 
       await client.query(
-        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
-        [`aud_${uuidv4().substring(0, 8)}`, userId, 'INCIDENT_UPDATE', 'INCIDENT', id, JSON.stringify(data), now]
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, project_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
+        [`aud_${uuidv4().substring(0, 8)}`, userId, 'INCIDENT_UPDATE', 'INCIDENT', id, JSON.stringify(data), inc.project_id, now]
       );
 
       return {
@@ -423,6 +435,16 @@ export class IncidentService {
         updatedAt: now,
       };
     });
+
+    realtimeService.publish(inc.project_id, {
+      type: 'INCIDENT_UPDATED',
+      incidentId: id,
+      title: updatedTitle,
+      severity: updatedSeverity,
+      assignedToId: updatedAssignee,
+    });
+
+    return result;
   }
 
   async updateIncidentStatus(
@@ -431,7 +453,8 @@ export class IncidentService {
     newStatus: IncidentStatus,
     note?: string,
     resolutionNote?: string,
-    expectedUpdatedAt?: string
+    expectedUpdatedAt?: string,
+    occurredAt?: string
   ) {
     const incRows = await pgDb.query<any>('SELECT * FROM incidents WHERE id = $1 LIMIT 1;', [id]);
     if (incRows.length === 0) throw new AppError('Incident not found', 404);
@@ -450,6 +473,25 @@ export class IncidentService {
       }
     }
 
+    // Out-of-order event protection: Prevent older telemetry/events from overwriting newer incident state
+    if (occurredAt) {
+      const eventOccurredTime = new Date(occurredAt).getTime();
+      const latestHistory = await pgDb.query<any>(
+        'SELECT changed_at FROM incident_status_history WHERE incident_id = $1 ORDER BY changed_at DESC LIMIT 1;',
+        [id]
+      );
+      if (latestHistory.length > 0) {
+        const lastChangedTime = new Date(latestHistory[0].changed_at).getTime();
+        if (eventOccurredTime < lastChangedTime) {
+          throw new AppError(
+            `Stale / Out-of-order status update rejected: event occurrence time (${new Date(occurredAt).toISOString()}) is older than the current incident state transition (${new Date(latestHistory[0].changed_at).toISOString()}).`,
+            409,
+            'STALE_EVENT'
+          );
+        }
+      }
+    }
+
     const fromStatus = inc.status;
     const now = new Date();
     const isResolved = newStatus === 'RESOLVED' || newStatus === 'CLOSED';
@@ -460,7 +502,7 @@ export class IncidentService {
     const eventId = `tle_${uuidv4().substring(0, 8)}`;
     const auditId = `aud_${uuidv4().substring(0, 8)}`;
 
-    return await pgDb.transaction(async (client) => {
+    const result = await pgDb.transaction(async (client) => {
       // 1. Update incident table
       await client.query(
         `UPDATE incidents
@@ -498,8 +540,8 @@ export class IncidentService {
 
       // 4. Create Audit Log
       await client.query(
-        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, project_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
         [
           auditId,
           userId,
@@ -507,6 +549,7 @@ export class IncidentService {
           'INCIDENT',
           id,
           JSON.stringify({ fromStatus, toStatus: newStatus, note, resolutionNote: finalResolutionNote }),
+          inc.project_id,
           now,
         ]
       );
@@ -519,6 +562,16 @@ export class IncidentService {
         updatedAt: now,
       };
     });
+
+    realtimeService.publish(inc.project_id, {
+      type: 'INCIDENT_STATUS_CHANGED',
+      incidentId: id,
+      fromStatus,
+      toStatus: newStatus,
+      resolvedAt,
+    });
+
+    return result;
   }
 
   async assignIncident(userId: string, id: string, assignedToId: string | null) {
@@ -568,9 +621,9 @@ export class IncidentService {
       );
 
       await client.query(
-        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
-        [auditId, userId, 'INCIDENT_ASSIGNMENT', 'INCIDENT', id, JSON.stringify({ previousAssignee: inc.assigned_to_id, assignedToId: targetAssigneeId }), now]
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, project_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
+        [auditId, userId, 'INCIDENT_ASSIGNMENT', 'INCIDENT', id, JSON.stringify({ previousAssignee: inc.assigned_to_id, assignedToId: targetAssigneeId }), inc.project_id, now]
       );
 
       return {
@@ -579,6 +632,15 @@ export class IncidentService {
         updatedAt: now,
       };
     });
+
+    realtimeService.publish(inc.project_id, {
+      type: 'INCIDENT_ASSIGNED',
+      incidentId: id,
+      assignedToId: targetAssigneeId,
+      assigneeName,
+    });
+
+    return result;
   }
 
   async linkDeployment(userId: string, incidentId: string, deploymentId: string, confidence: 'high' | 'medium' | 'low', note?: string) {
@@ -596,7 +658,7 @@ export class IncidentService {
     const now = new Date();
     const linkId = existing.length > 0 ? existing[0].id : `idl_${uuidv4().substring(0, 8)}`;
 
-    return await pgDb.transaction(async (client) => {
+    const result = await pgDb.transaction(async (client) => {
       if (existing.length > 0) {
         await client.query(
           `UPDATE incident_deployment_links SET confidence = $1, note = $2, linked_by_id = $3 WHERE id = $4;`,
@@ -611,9 +673,9 @@ export class IncidentService {
       }
 
       await client.query(
-        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
-        [`aud_${uuidv4().substring(0, 8)}`, userId, 'INCIDENT_DEPLOYMENT_LINK', 'INCIDENT', incidentId, JSON.stringify({ deploymentId, confidence, note }), now]
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, project_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
+        [`aud_${uuidv4().substring(0, 8)}`, userId, 'INCIDENT_DEPLOYMENT_LINK', 'INCIDENT', incidentId, JSON.stringify({ deploymentId, confidence, note }), incRows[0].project_id, now]
       );
 
       return {
@@ -626,9 +688,21 @@ export class IncidentService {
         createdAt: now,
       };
     });
+
+    realtimeService.publish(incRows[0].project_id, {
+      type: 'DEPLOYMENT_LINKED',
+      incidentId,
+      deploymentId,
+      confidence,
+    });
+
+    return result;
   }
 
   async unlinkDeployment(userId: string, incidentId: string, deploymentId: string) {
+    const incRows = await pgDb.query('SELECT project_id FROM incidents WHERE id = $1 LIMIT 1;', [incidentId]);
+    if (incRows.length === 0) throw new AppError('Incident not found', 404);
+
     const existing = await pgDb.query(
       'SELECT id FROM incident_deployment_links WHERE incident_id = $1 AND deployment_id = $2 LIMIT 1;',
       [incidentId, deploymentId]
@@ -641,10 +715,16 @@ export class IncidentService {
       await client.query('DELETE FROM incident_deployment_links WHERE incident_id = $1 AND deployment_id = $2;', [incidentId, deploymentId]);
 
       await client.query(
-        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
-        [`aud_${uuidv4().substring(0, 8)}`, userId, 'INCIDENT_DEPLOYMENT_UNLINK', 'INCIDENT', incidentId, JSON.stringify({ deploymentId }), now]
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, project_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
+        [`aud_${uuidv4().substring(0, 8)}`, userId, 'INCIDENT_DEPLOYMENT_UNLINK', 'INCIDENT', incidentId, JSON.stringify({ deploymentId }), incRows[0].project_id, now]
       );
+    });
+
+    realtimeService.publish(incRows[0].project_id, {
+      type: 'DEPLOYMENT_UNLINKED',
+      incidentId,
+      deploymentId,
     });
 
     return { success: true };
@@ -658,7 +738,7 @@ export class IncidentService {
     const eventId = `tle_${uuidv4().substring(0, 8)}`;
     const now = new Date();
 
-    return await pgDb.transaction(async (client) => {
+    const result = await pgDb.transaction(async (client) => {
       await client.query(
         `INSERT INTO comments (id, incident_id, user_id, content, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6);`,
@@ -683,6 +763,12 @@ export class IncidentService {
         ]
       );
 
+      await client.query(
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, project_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
+        [`aud_${uuidv4().substring(0, 8)}`, userId, 'COMMENT_CREATE', 'COMMENT', commentId, JSON.stringify({ incidentId }), incRows[0].project_id, now]
+      );
+
       const userRows = await client.query<any>('SELECT id, name, email, avatar_url FROM users WHERE id = $1;', [userId]);
       const user = userRows[0];
 
@@ -696,6 +782,14 @@ export class IncidentService {
         user: user ? { id: user.id, name: user.name, email: user.email, avatarUrl: user.avatar_url } : null,
       };
     });
+
+    realtimeService.publish(incRows[0].project_id, {
+      type: 'COMMENT_ADDED',
+      incidentId,
+      commentId,
+    });
+
+    return result;
   }
 
   async getComments(incidentId: string) {

@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { pgDb } from '../lib/postgres';
 import { CodeChange } from '../types';
 import { AppError } from '../middleware/errorHandler';
+import { realtimeService } from './realtime.service';
 
 /**
  * Safely parses and validates a GitHub repository URL.
@@ -211,8 +212,8 @@ export class CodeChangeService {
 
       // 5. Create audit log
       await client.query(
-        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, project_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
         [
           auditId,
           userId,
@@ -220,6 +221,7 @@ export class CodeChangeService {
           'CODE_CHANGE',
           commitId,
           JSON.stringify({ commitSha: data.commitSha, message: data.message }),
+          projectId,
           now,
         ]
       );
@@ -239,6 +241,14 @@ export class CodeChangeService {
         createdAt: now,
       };
     });
+
+    realtimeService.publish(projectId, {
+      type: 'CODE_CHANGE_RECORDED',
+      commitSha: data.commitSha,
+      author: data.author,
+    });
+
+    return result;
   }
 
   async syncGitHubCommits(userId: string, projectId: string) {
@@ -395,8 +405,8 @@ export class CodeChangeService {
     if (newlyImported > 0) {
       const auditId = `aud_${uuidv4().substring(0, 8)}`;
       await pgDb.query(
-        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, project_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
         [
           auditId,
           userId,
@@ -408,9 +418,16 @@ export class CodeChangeService {
             totalFetched: commits.length,
             repository: `${parsed.owner}/${parsed.repo}`,
           }),
+          projectId,
           now,
         ]
       );
+
+      realtimeService.publish(projectId, {
+        type: 'CODE_CHANGE_RECORDED',
+        newlyImported,
+        repository: `${parsed.owner}/${parsed.repo}`,
+      });
     }
 
     const updatedList = await this.listCodeChanges(projectId);

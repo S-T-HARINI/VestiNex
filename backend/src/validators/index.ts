@@ -100,6 +100,8 @@ export const updateIncidentStatusSchema = z.object({
   status: z.enum(['OPEN', 'INVESTIGATING', 'IDENTIFIED', 'MONITORING', 'RESOLVED', 'CLOSED']),
   note: z.string().max(1000).optional(),
   resolutionNote: z.string().max(2000).optional(),
+  expectedUpdatedAt: z.string().optional(),
+  occurredAt: z.string().optional(),
 });
 
 export const assignIncidentSchema = z.object({

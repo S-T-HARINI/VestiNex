@@ -66,7 +66,9 @@ router.patch('/incidents/:id/status', authenticate, requireIncidentRole('DEVELOP
       req.params.id as string,
       req.body.status,
       req.body.note,
-      req.body.resolutionNote
+      req.body.resolutionNote,
+      req.body.expectedUpdatedAt,
+      req.body.occurredAt
     );
     res.json({ success: true, incident });
   } catch (err) {

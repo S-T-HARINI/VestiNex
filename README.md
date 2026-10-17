@@ -7,7 +7,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-14.2-black.svg)](https://nextjs.org/)
 [![Express](https://img.shields.io/badge/Express-4.21-gray.svg)](https://expressjs.com/)
 [![Prisma](https://img.shields.io/badge/Prisma-5.22-teal.svg)](https://www.prisma.io/)
-[![Vitest](https://img.shields.io/badge/Vitest-33%20Passed-emerald.svg)](https://vitest.dev/)
+[![Vitest](https://img.shields.io/badge/Vitest-56%20Passed-emerald.svg)](https://vitest.dev/)
 [![Playwright](https://img.shields.io/badge/Playwright-9%20Passed-emerald.svg)](https://playwright.dev/)
 
 **GitHub Repository:** [https://github.com/S-T-HARINI/VestiNex.git](https://github.com/S-T-HARINI/VestiNex.git)
@@ -44,6 +44,92 @@ When production outages strike, engineering and SRE teams are forced to manually
 | **6. Multi-User Updates** | Collaborative incident investigation stream supporting threaded team comments and immutable status audit trails. | [Database Schema: Comments](docs/database-schema.md#411-comments) |
 | **7. Dashboard & Recurring Issues** | High-density dashboard with MTTR metrics, deployment volume trends, severity breakdowns, and recurring issue badges. | [API Reference: Dashboard](docs/api-reference.md#9-operational-dashboard-apis) |
 | **8. Event Ordering & Concurrency** | Unique constraints for commit/membership deduplication, dual-timestamp ordering, and HTTP `409 Conflict` on simultaneous edits. | [Database Schema: Deduplication](docs/database-schema.md#1-database-architecture-overview) |
+
+---
+
+## 3.1 Platform Bonus Features (End-to-End Implementation)
+
+VestiNex implements **all 5 platform bonus requirements** with zero mock data, full database persistence, and end-to-end integration:
+
+| Bonus Feature | Core Capability | Architectural Enforcement |
+| :--- | :--- | :--- |
+| **Bonus A: GitHub Webhooks** | Real-time push, deployment, and deployment_status event ingestion. | `POST /api/webhooks/github` with cryptographic HMAC SHA-256 signature verification (`X-Hub-Signature-256`) and delivery deduplication (`X-GitHub-Delivery`). |
+| **Bonus B: Real-Time Incident Updates** | Scoped Server-Sent Events (SSE) stream for collaborative triage. | `GET /api/projects/:id/events` authorized with `requireProjectRole('VIEWER')`, 15s keep-alive heartbeat, and live "Live Sync" pulsing status badge. |
+| **Bonus C: Complete Role-Based Access Control** | 4-tier scoped authorization (`OWNER`, `ADMIN`, `DEVELOPER`, `VIEWER`). | Backend route middleware returning `HTTP 403 Forbidden` on mutation attempts by Viewers; frontend "Observer Mode" badge with disabled controls. |
+| **Bonus D: Event Deduplication & Out-of-Order Handling** | Physical timeline reconstruction and stale update prevention. | Dual timestamp tracking (`occurred_at` vs `ingested_at`), deterministic sorting, `HTTP 409 STALE_EVENT` on out-of-order telemetry, and optimistic locking (`expectedUpdatedAt`). |
+| **Bonus E: Audit Logs & Operational History** | Persistent compliance trail with credential sanitization. | `audit_logs` relational table scoped by `project_id`, automatic credential redaction, immutable append-only queries via `GET /api/projects/:id/audit`, and UI Audit Trail viewer. |
+
+### Bonus Feature A — GitHub Webhooks Integration
+
+1. **Endpoint**: `POST /api/webhooks/github`
+2. **Signature Verification**: Validates the payload against `GITHUB_WEBHOOK_SECRET` using `crypto.createHmac('sha256', secret)` and `crypto.timingSafeEqual` against the `X-Hub-Signature-256` header.
+3. **Delivery Deduplication**: Every delivery ID (`X-GitHub-Delivery`) is recorded in `webhook_deliveries`. Duplicate deliveries are acknowledged with `{ success: true, deduplicated: true }` without redundant processing.
+4. **Supported Events**:
+   - `push`: Extracts repository commits, verifies project association, and ingests commit records into `code_changes` and `timeline_events`.
+   - `deployment`: Records deployment records in `RUNNING` status with git branch, sha, and environment.
+   - `deployment_status`: Transitions existing deployments to `SUCCESSFUL` or `FAILED`, logs status transition history, and emits real-time events.
+   - `ping`: Verifies webhook setup handshake and logs connection verification.
+
+**Local Testing with cURL**:
+```bash
+# Calculate HMAC SHA-256 signature for payload
+SECRET="your_webhook_secret_here"
+PAYLOAD='{"zen":"Practicality beats purity.","hook_id":1}'
+SIG="sha256=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$SECRET" | sed 's/^.* //')"
+
+curl -X POST http://localhost:4000/api/webhooks/github \
+  -H "Content-Type: application/json" \
+  -H "X-GitHub-Event: ping" \
+  -H "X-GitHub-Delivery: delivery-uuid-001" \
+  -H "X-Hub-Signature-256: $SIG" \
+  -d "$PAYLOAD"
+```
+
+### Bonus Feature B — Real-Time Incident Updates (Server-Sent Events)
+
+- **SSE Endpoint**: `GET /api/projects/:id/events`
+- **Security**: Requires active session and project membership (`VIEWER` or higher). Cross-workspace access is rejected with `HTTP 403`.
+- **Heartbeat Ping**: Automatic 15-second heartbeat (`: ping\n\n`) maintains persistent connections across reverse proxies and firewalls.
+- **Broadcast Events**:
+  - `INCIDENT_CREATED` / `INCIDENT_UPDATED`: Real-time incident metadata changes.
+  - `INCIDENT_STATUS_CHANGED`: Live state machine updates (`OPEN` → `INVESTIGATING` → `IDENTIFIED` → `RESOLVED`).
+  - `INCIDENT_ASSIGNED`: Immediate lead SRE assignment updates.
+  - `COMMENT_ADDED`: Live investigation notes and runbook collaboration.
+  - `DEPLOYMENT_LINKED` / `DEPLOYMENT_STATUS_CHANGED`: Live deployment correlation.
+- **Frontend Integration**: Built into the Incident Investigation Workspace with a pulsing `Live Sync` indicator. Automatically triggers cache invalidation and re-fetches when events arrive from peer engineers.
+
+### Bonus Feature C — Scoped Role-Based Access Control (RBAC)
+
+| Action | Admin / Owner | Developer / SRE | Viewer / Observer |
+| :--- | :---: | :---: | :---: |
+| View Project Dashboard, Timeline, Incidents | ✅ | ✅ | ✅ |
+| Subscribe to Real-Time SSE Stream | ✅ | ✅ | ✅ |
+| Update Incident Status & Resolution Notes | ✅ | ✅ | ❌ *(HTTP 403)* |
+| Assign Lead SRE to Incident | ✅ | ✅ | ❌ *(HTTP 403)* |
+| Post Investigation Activity Comments | ✅ | ✅ | ❌ *(HTTP 403)* |
+| Record New Deployments | ✅ | ✅ | ❌ *(HTTP 403)* |
+| Record Code Changes & Sync Commits | ✅ | ✅ | ❌ *(HTTP 403)* |
+| Invite Workspace Members & Change Roles | ✅ | ❌ *(HTTP 403)* | ❌ *(HTTP 403)* |
+| Modify Project Configuration & Settings | ✅ | ❌ *(HTTP 403)* | ❌ *(HTTP 403)* |
+
+*In the frontend, users with the `VIEWER` role are greeted with an **"Observer Mode (Read-Only)"** banner, and mutation controls (status dropdowns, assignment menus, and comment forms) are cleanly disabled.*
+
+### Bonus Feature D — Event Deduplication & Out-of-Order Handling
+
+- **Database-Level Deduplication**:
+  - `webhook_deliveries`: Enforces unique constraint on `delivery_id`.
+  - `code_changes`: Enforces unique compound constraint on `(commit_sha, project_id)`. Duplicate commit submissions reject with `HTTP 409 Conflict`.
+  - `project_members`: Enforces unique compound constraint on `(project_id, user_id)`.
+- **Dual Timestamping**: Every event captures `occurred_at` (telemetry physical creation) and `ingested_at` (database insertion timestamp).
+- **Out-of-Order Telemetry Protection**: The incident status machine inspects incoming `occurredAt` timestamps against historical status changes. Out-of-order events timestamped prior to the current state transition are rejected with `HTTP 409 STALE_EVENT`.
+- **Optimistic Concurrency**: Mutation requests accept `expectedUpdatedAt`. If another engineer modified the incident concurrently, the update is rejected with `HTTP 409 CONFLICT`, preventing silent overwrites.
+
+### Bonus Feature E — Audit Logs & Compliance Trail
+
+- **Storage**: Project-scoped `audit_logs` table persisting `user_id`, `project_id`, `action`, `entity_type`, `entity_id`, and structured `changes` diffs.
+- **Credential Sanitization**: The audit service automatically scrubs sensitive credentials matching `password`, `token`, `secret`, `authorization`, `signature`, and `cookie` prior to serialization.
+- **Query API**: `GET /api/projects/:id/audit?entityType=...&entityId=...` allows filtering by operational entity.
+- **Project Settings UI**: Displays a dedicated **Audit Trail & Operational History** card in Project Settings with timestamp, actor attribution, entity badges, and expandable JSON change payloads.
 
 ---
 
@@ -273,12 +359,12 @@ Expected health check response:
 ## 14. Running Automated Tests
 
 ### 1. Backend Integration Tests (Vitest)
-Executes 33 comprehensive API and integration tests covering auth, project isolation, deployment tracking, incident state machines, concurrency locks, and GitHub commit ingestion:
+Executes 56 comprehensive API and integration tests covering auth, project isolation, deployment tracking, incident state machines, concurrency locks, GitHub commit ingestion, GitHub webhooks (HMAC & deduplication), real-time SSE streams, RBAC negative tests, out-of-order rejection, and project-scoped audit logs:
 ```bash
 cd backend
 npm test
 ```
-**Result:** `33 passed (33 tests across 2 test files)`
+**Result:** `56 passed (56 tests across 3 test files: api.test.ts, bonusFeatures.test.ts, githubSync.test.ts)`
 
 ### 2. Frontend Production Build (Next.js)
 Verifies static page generation, dynamic routing, and TypeScript compilation across all 17 routes:

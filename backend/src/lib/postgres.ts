@@ -136,32 +136,48 @@ export class PostgresService {
 
   private async applyMigration() {
     try {
-      // Check if migration has already been applied
+      // Check if base migration has already been applied
       const check = await this.query(
         "SELECT 1 FROM information_schema.tables WHERE table_name = 'projects' LIMIT 1;"
       );
-      if (check.length > 0) {
-        return; // Already initialized
-      }
+      if (check.length === 0) {
+        // Read migration.sql
+        const migrationPaths = [
+          path.resolve(process.cwd(), '../prisma/migrations/20250215000000_init/migration.sql'),
+          path.resolve(process.cwd(), 'prisma/migrations/20250215000000_init/migration.sql'),
+        ];
 
-      // Read migration.sql
-      const migrationPaths = [
-        path.resolve(process.cwd(), '../prisma/migrations/20250215000000_init/migration.sql'),
-        path.resolve(process.cwd(), 'prisma/migrations/20250215000000_init/migration.sql'),
-      ];
+        let sql = '';
+        for (const p of migrationPaths) {
+          if (fs.existsSync(p)) {
+            sql = fs.readFileSync(p, 'utf8');
+            break;
+          }
+        }
 
-      let sql = '';
-      for (const p of migrationPaths) {
-        if (fs.existsSync(p)) {
-          sql = fs.readFileSync(p, 'utf8');
-          break;
+        if (sql) {
+          await this.exec(sql);
+          console.log('[PostgreSQL Migration] Successfully applied 20250215000000_init schema DDL.');
         }
       }
 
-      if (sql) {
-        await this.exec(sql);
-        console.log('[PostgreSQL Migration] Successfully applied 20250215000000_init schema DDL.');
-      }
+      // Always ensure incremental bonus schema updates (tables, columns, indexes) are applied
+      await this.exec(`
+        ALTER TABLE "audit_logs" ADD COLUMN IF NOT EXISTS "project_id" TEXT;
+        CREATE TABLE IF NOT EXISTS "webhook_deliveries" (
+          "id" TEXT NOT NULL,
+          "delivery_id" TEXT NOT NULL,
+          "event_type" TEXT NOT NULL,
+          "project_id" TEXT,
+          "payload_hash" TEXT,
+          "status" TEXT NOT NULL DEFAULT 'PROCESSED',
+          "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT "webhook_deliveries_pkey" PRIMARY KEY ("id")
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "webhook_deliveries_delivery_id_key" ON "webhook_deliveries"("delivery_id");
+        CREATE INDEX IF NOT EXISTS "webhook_deliveries_project_id_created_at_idx" ON "webhook_deliveries"("project_id", "created_at");
+        CREATE INDEX IF NOT EXISTS "audit_logs_project_id_created_at_idx" ON "audit_logs"("project_id", "created_at");
+      `);
     } catch (err: any) {
       console.error('[PostgreSQL Migration Error]:', err.message);
     }

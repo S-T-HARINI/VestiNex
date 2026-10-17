@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { pgDb } from '../lib/postgres';
 import { Deployment, DeploymentStatus, Environment } from '../types';
 import { AppError } from '../middleware/errorHandler';
+import { realtimeService } from './realtime.service';
 
 export class DeploymentService {
   async listDeployments(projectId: string, filters?: { environment?: Environment; status?: DeploymentStatus }) {
@@ -260,8 +261,8 @@ export class DeploymentService {
 
       // 4. Create Audit Log
       await client.query(
-        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, project_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
         [
           auditId,
           userId,
@@ -269,6 +270,7 @@ export class DeploymentService {
           'DEPLOYMENT',
           depId,
           JSON.stringify({ version: data.version, environment: data.environment, status: initialStatus }),
+          projectId,
           now,
         ]
       );
@@ -293,6 +295,16 @@ export class DeploymentService {
         updatedAt: now,
       };
     });
+
+    realtimeService.publish(projectId, {
+      type: 'DEPLOYMENT_CREATED',
+      deploymentId: depId,
+      version: data.version,
+      environment: data.environment,
+      status: initialStatus,
+    });
+
+    return result;
   }
 
   async updateDeploymentStatus(userId: string, id: string, newStatus: DeploymentStatus, note?: string) {
@@ -352,9 +364,9 @@ export class DeploymentService {
 
       // 4. Create Audit Log
       await client.query(
-        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7);`,
-        [auditId, userId, 'DEPLOYMENT_STATUS_UPDATE', 'DEPLOYMENT', id, JSON.stringify({ fromStatus, toStatus: newStatus, note }), now]
+        `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, project_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
+        [auditId, userId, 'DEPLOYMENT_STATUS_UPDATE', 'DEPLOYMENT', id, JSON.stringify({ fromStatus, toStatus: newStatus, note }), dep.project_id, now]
       );
 
       return {
@@ -365,6 +377,16 @@ export class DeploymentService {
         updatedAt: now,
       };
     });
+
+    realtimeService.publish(dep.project_id, {
+      type: 'DEPLOYMENT_STATUS_CHANGED',
+      deploymentId: id,
+      version: dep.version,
+      fromStatus,
+      toStatus: newStatus,
+    });
+
+    return result;
   }
 }
 
