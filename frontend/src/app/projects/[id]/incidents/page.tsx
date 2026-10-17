@@ -83,7 +83,7 @@ export default function IncidentsListPage() {
           <select
             value={severityFilter}
             onChange={(e) => setSeverityFilter(e.target.value)}
-            className="rounded border border-border bg-background px-2.5 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-accent text-xs"
+            className="rounded border border-border bg-input px-2.5 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-ring text-xs"
           >
             <option value="">All Severities</option>
             <option value="CRITICAL">CRITICAL</option>
@@ -95,7 +95,7 @@ export default function IncidentsListPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded border border-border bg-background px-2.5 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-accent text-xs"
+            className="rounded border border-border bg-input px-2.5 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-ring text-xs"
           >
             <option value="">All Statuses</option>
             <option value="OPEN">OPEN</option>

@@ -46,6 +46,7 @@ export function DeploymentTrendsChart({ data }: Props) {
               color: 'var(--foreground)',
               boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
             }}
+            itemStyle={{ color: 'var(--foreground)' }}
           />
           <Legend
             verticalAlign="top"

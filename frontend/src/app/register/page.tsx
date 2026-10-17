@@ -61,7 +61,7 @@ export default function RegisterPage() {
           </CardHeader>
           <CardContent className="space-y-3.5">
             {error && (
-              <div className="rounded-[5px] border border-status-error-border bg-status-error-bg p-2.5 text-xs text-status-error flex items-center gap-2">
+              <div className="rounded-[5px] border border-status-error-border bg-status-error-bg p-2.5 text-xs text-status-error-text flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 shrink-0 text-status-error" />
                 <span>{error}</span>
               </div>

@@ -56,6 +56,7 @@ export function SeverityDistributionChart({ distribution }: Props) {
               color: 'var(--foreground)',
               boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
             }}
+            itemStyle={{ color: 'var(--foreground)' }}
           />
           <Bar dataKey="count" name="Incidents" radius={[0, 3, 3, 0]} barSize={14}>
             {data.map((entry) => (

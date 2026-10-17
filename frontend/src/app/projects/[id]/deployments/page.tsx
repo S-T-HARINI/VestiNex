@@ -67,7 +67,7 @@ export default function DeploymentsListPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
           <div>
             <h1 className="text-xl font-semibold text-foreground tracking-tight flex items-center gap-2">
-              <Rocket className="h-5 w-5 text-accent" />
+              <Rocket className="h-5 w-5 text-primary" />
               <span>Deployment Stream</span>
             </h1>
             <p className="text-xs text-foreground-secondary">
@@ -93,7 +93,7 @@ export default function DeploymentsListPage() {
           <select
             value={envFilter}
             onChange={(e) => setEnvFilter(e.target.value)}
-            className="rounded border border-border bg-background px-2.5 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-accent text-xs"
+            className="rounded border border-border bg-input px-2.5 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-ring text-xs"
           >
             <option value="">All Environments</option>
             <option value="PRODUCTION">PRODUCTION</option>
@@ -104,7 +104,7 @@ export default function DeploymentsListPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded border border-border bg-background px-2.5 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-accent text-xs"
+            className="rounded border border-border bg-input px-2.5 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-ring text-xs"
           >
             <option value="">All Statuses</option>
             <option value="SUCCESSFUL">SUCCESSFUL</option>
@@ -223,7 +223,7 @@ export default function DeploymentsListPage() {
                     )}
 
                     <Link href={`/projects/${projectId}/deployments/${dep.id}`}>
-                      <Button size="sm" variant="ghost" className="h-7 text-xs text-accent hover:text-accent-hover">
+                      <Button size="sm" variant="ghost" className="h-7 text-xs text-primary hover:text-primary/80">
                         <span>Details</span>
                         <ArrowRight className="h-3 w-3 ml-1" />
                       </Button>

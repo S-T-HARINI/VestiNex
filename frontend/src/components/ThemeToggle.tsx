@@ -44,7 +44,7 @@ export function ThemeToggle({
               : 'text-foreground-secondary hover:text-foreground hover:bg-background/40'
           } focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring`}
         >
-          <Sun className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+            <Sun className="h-3.5 w-3.5 shrink-0 text-status-warning" />
           <span>Light</span>
         </button>
 
@@ -60,7 +60,7 @@ export function ThemeToggle({
               : 'text-foreground-secondary hover:text-foreground hover:bg-background/40'
           } focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring`}
         >
-          <Moon className="h-3.5 w-3.5 shrink-0 text-blue-400" />
+          <Moon className="h-3.5 w-3.5 shrink-0 text-primary" />
           <span>Dark</span>
         </button>
 
@@ -93,9 +93,9 @@ export function ThemeToggle({
         className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface text-foreground-secondary hover:text-foreground hover:bg-background-secondary transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
         {theme === 'light' ? (
-          <Sun className="h-4 w-4 text-amber-500" />
+          <Sun className="h-4 w-4 text-status-warning" />
         ) : theme === 'dark' ? (
-          <Moon className="h-4 w-4 text-blue-400" />
+          <Moon className="h-4 w-4 text-primary" />
         ) : (
           <Laptop className="h-4 w-4 text-foreground-muted" />
         )}
@@ -117,7 +117,7 @@ export function ThemeToggle({
             }`}
           >
             <div className="flex items-center gap-2">
-              <Sun className="h-3.5 w-3.5 text-amber-500" />
+              <Sun className="h-3.5 w-3.5 text-status-warning" />
               <span>Light</span>
             </div>
             {theme === 'light' && <Check className="h-3 w-3 text-primary" />}
@@ -134,7 +134,7 @@ export function ThemeToggle({
             }`}
           >
             <div className="flex items-center gap-2">
-              <Moon className="h-3.5 w-3.5 text-blue-400" />
+              <Moon className="h-3.5 w-3.5 text-primary" />
               <span>Dark</span>
             </div>
             {theme === 'dark' && <Check className="h-3 w-3 text-primary" />}

@@ -235,15 +235,15 @@ export function InvestigationWorkspace({ incident, onRefresh, users, projectId }
                 Occurred: <span className="text-foreground font-mono tabular-nums">{formatDate(incident.occurredAt)}</span>
               </span>
               {liveConnected && (
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono bg-status-success-bg text-status-success-text border border-status-success-border">
+                  <span className="h-1.5 w-1.5 rounded-full bg-status-success" />
                   Live Sync
                 </span>
               )}
               {isViewer && (
-                <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-500/30">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium border border-status-warning-border bg-status-warning-bg text-status-warning-text">
                   Observer Mode (Read-Only)
-                </Badge>
+                </span>
               )}
             </div>
             <h1 className="text-xl font-semibold text-foreground tracking-tight">{incident.title}</h1>
@@ -280,9 +280,9 @@ export function InvestigationWorkspace({ incident, onRefresh, users, projectId }
                   <div
                     className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-mono tracking-wide ${
                       isCurrent
-                        ? 'bg-accent text-white font-semibold'
+                        ? 'bg-primary text-primary-foreground font-semibold'
                         : isPast
-                        ? 'bg-status-success/15 text-status-success border border-status-success/30'
+                        ? 'bg-status-success-bg text-status-success-text border border-status-success-border font-medium'
                         : 'bg-surface text-foreground-muted border border-border'
                     }`}
                   >
@@ -403,11 +403,11 @@ export function InvestigationWorkspace({ incident, onRefresh, users, projectId }
                   const dep = item.deployment;
                   return (
                     <div key={dep.id} className="relative group">
-                      <div className="absolute -left-6 top-1 h-3.5 w-3.5 rounded-full border-2 border-accent bg-background" />
-                      <div className="rounded border border-accent/20 bg-surface/50 p-2.5 text-xs space-y-1">
+                      <div className="absolute -left-6 top-1 h-3.5 w-3.5 rounded-full border-2 border-primary bg-card" />
+                      <div className="rounded border border-border bg-surface p-2.5 text-xs space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="font-semibold text-foreground flex items-center gap-1.5">
-                            <Rocket className="h-3 w-3 text-accent" />
+                            <Rocket className="h-3 w-3 text-primary" />
                             DEPLOYMENT MARKER: {dep.version} ({dep.environment})
                           </span>
                           <span className="font-mono tabular-nums text-[10px] text-foreground-secondary">
@@ -415,7 +415,7 @@ export function InvestigationWorkspace({ incident, onRefresh, users, projectId }
                           </span>
                         </div>
                         <p className="text-[11px] text-foreground-secondary">{dep.releaseNotes || 'Production rollout.'}</p>
-                        <div className="text-[10px] text-accent font-mono tabular-nums">
+                        <div className="text-[10px] text-primary font-mono tabular-nums">
                           Finished {item.diffMinutes}m before incident onset
                         </div>
                       </div>
@@ -425,21 +425,21 @@ export function InvestigationWorkspace({ incident, onRefresh, users, projectId }
 
                 {/* Incident Event Marker */}
                 <div className="relative">
-                  <div className="absolute -left-6 top-1 h-3.5 w-3.5 rounded-full border-2 border-status-error bg-status-error" />
-                  <div className="rounded border border-status-error/40 bg-status-error/10 p-3 text-xs space-y-2">
+                  <div className="absolute -left-6 top-1 h-3.5 w-3.5 rounded-full border-2 border-status-error bg-card" />
+                  <div className="rounded border border-status-error-border bg-status-error-bg p-3 text-xs space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-status-error flex items-center gap-1.5">
-                        <AlertOctagon className="h-3.5 w-3.5" />
+                      <span className="font-semibold text-status-error-text flex items-center gap-1.5">
+                        <AlertOctagon className="h-3.5 w-3.5 text-status-error" />
                         INCIDENT ONSET DETECTED
                       </span>
-                      <span className="font-mono tabular-nums text-[11px] text-status-error">
+                      <span className="font-mono tabular-nums text-[11px] text-status-error-text">
                         {formatDate(incident.occurredAt)}
                       </span>
                     </div>
                     <div className="text-[11px] text-foreground font-medium">{incident.title}</div>
 
                     {/* Dual timestamp badge: occurred vs ingested */}
-                    <div className="flex items-center gap-3 pt-1 border-t border-status-error/20 text-[10px] flex-wrap">
+                    <div className="flex items-center gap-3 pt-1 border-t border-status-error-border text-[10px] flex-wrap">
                       <div>
                         <span className="text-foreground-secondary">Occurred: </span>
                         <span className="font-mono tabular-nums text-foreground">{formatDate(incident.occurredAt)}</span>
@@ -604,9 +604,9 @@ export function InvestigationWorkspace({ incident, onRefresh, users, projectId }
               </div>
 
               {incident.resolutionNote && (
-                <div className="rounded border border-status-success/30 bg-status-success/10 p-2.5 space-y-1">
-                  <div className="text-[10px] uppercase font-semibold text-status-success flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3" />
+                <div className="rounded border border-status-success-border bg-status-success-bg p-2.5 space-y-1">
+                  <div className="text-[10px] uppercase font-semibold text-status-success-text flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3 text-status-success" />
                     <span>Resolution Post-Mortem</span>
                   </div>
                   <p className="text-[11px] text-foreground-secondary leading-relaxed">{incident.resolutionNote}</p>
@@ -616,11 +616,11 @@ export function InvestigationWorkspace({ incident, onRefresh, users, projectId }
           </Card>
 
           {/* AI / Heuristic Correlated Deployments Panel */}
-          <Card className="border-accent/30">
+          <Card className="border-border">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                  <Sparkles className="h-4 w-4 text-accent" />
+                  <Sparkles className="h-4 w-4 text-primary" />
                   <span>Deployment Correlation Leads</span>
                 </CardTitle>
               </div>
@@ -630,7 +630,7 @@ export function InvestigationWorkspace({ incident, onRefresh, users, projectId }
             </CardHeader>
             <CardContent className="space-y-3">
               {/* Scientific disclaimer */}
-              <div className="rounded border border-status-warning/30 bg-status-warning/10 p-2.5 text-[11px] text-status-warning flex items-start gap-2">
+              <div className="rounded border border-status-warning-border bg-status-warning-bg p-2.5 text-[11px] text-status-warning-text flex items-start gap-2">
                 <Info className="h-4 w-4 shrink-0 text-status-warning mt-0.5" />
                 <span>
                   <strong>Evidence Policy:</strong> Potential correlation does not prove causation. Verify candidate commit diffs before rolling back.
@@ -646,7 +646,7 @@ export function InvestigationWorkspace({ incident, onRefresh, users, projectId }
                         key={dep.id}
                         className={`rounded border p-3 space-y-2 text-xs transition-colors ${
                           sug.isLinked
-                            ? 'border-status-success/40 bg-status-success/10'
+                            ? 'border-status-success-border bg-status-success-bg'
                             : 'border-border bg-surface'
                         }`}
                       >

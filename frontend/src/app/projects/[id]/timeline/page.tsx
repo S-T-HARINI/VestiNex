@@ -58,16 +58,16 @@ export default function TimelinePage() {
   const getEventDotColor = (type: string) => {
     if (type.startsWith('INCIDENT_RESOLVED')) return 'bg-status-success';
     if (type.startsWith('INCIDENT')) return 'bg-status-error';
-    if (type.startsWith('DEPLOYMENT')) return 'bg-accent';
-    if (type.startsWith('CODE_CHANGE')) return 'bg-purple-500';
+    if (type.startsWith('DEPLOYMENT')) return 'bg-primary';
+    if (type.startsWith('CODE_CHANGE')) return 'bg-foreground-muted';
     return 'bg-foreground-muted';
   };
 
   const getEventIcon = (type: string) => {
-    if (type.startsWith('DEPLOYMENT')) return <Rocket className="h-3 w-3 text-accent" />;
+    if (type.startsWith('DEPLOYMENT')) return <Rocket className="h-3 w-3 text-primary" />;
     if (type.startsWith('INCIDENT_RESOLVED')) return <CheckCircle2 className="h-3 w-3 text-status-success" />;
     if (type.startsWith('INCIDENT')) return <AlertOctagon className="h-3 w-3 text-status-error" />;
-    if (type.startsWith('CODE_CHANGE')) return <GitBranch className="h-3 w-3 text-purple-400" />;
+    if (type.startsWith('CODE_CHANGE')) return <GitBranch className="h-3 w-3 text-foreground-secondary" />;
     if (type.startsWith('COMMENT')) return <MessageSquare className="h-3 w-3 text-foreground-secondary" />;
     return <Layers className="h-3 w-3 text-foreground-muted" />;
   };
@@ -88,7 +88,7 @@ export default function TimelinePage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <History className="h-4 w-4 text-accent" />
+              <History className="h-4 w-4 text-primary" />
               <h1 className="text-lg font-semibold text-foreground tracking-tight">
                 Unified Chronological Event Timeline
               </h1>
@@ -103,12 +103,12 @@ export default function TimelinePage() {
               <strong className="text-foreground">{events.length}</strong> events
             </span>
             {delayedCount > 0 && (
-              <span className="rounded border border-status-warning/30 bg-status-warning/10 px-2 py-0.5 text-status-warning">
+              <span className="rounded border border-status-warning-border bg-status-warning-bg px-2 py-0.5 text-status-warning-text">
                 {delayedCount} delayed
               </span>
             )}
             {outOfOrderCount > 0 && (
-              <span className="rounded border border-status-error/30 bg-status-error/10 px-2 py-0.5 text-status-error">
+              <span className="rounded border border-status-error-border bg-status-error-bg px-2 py-0.5 text-status-error-text">
                 {outOfOrderCount} out-of-order
               </span>
             )}
@@ -127,7 +127,7 @@ export default function TimelinePage() {
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
               aria-label="Filter by event type"
-              className="rounded border border-border bg-background px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+              className="rounded border border-border bg-input px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             >
               <option value="">All Event Types</option>
               <option value="INCIDENT_CREATED">Incidents Created</option>
@@ -143,14 +143,14 @@ export default function TimelinePage() {
               aria-pressed={delayedOnly}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded border text-xs font-mono transition-colors ${
                 delayedOnly
-                  ? 'border-status-warning bg-status-warning/15 text-status-warning font-semibold'
+                  ? 'border-status-warning-border bg-status-warning-bg text-status-warning-text font-semibold'
                   : 'border-border bg-background text-foreground-secondary hover:text-foreground hover:bg-surface'
               }`}
             >
               <Clock className="h-3 w-3" />
               <span>Delayed Ingest Only</span>
               {delayedCount > 0 && (
-                <span className="ml-0.5 rounded-full bg-status-warning/20 px-1 py-0 text-[10px]">
+                <span className="ml-0.5 rounded-full bg-status-warning-border px-1 py-0 text-[10px] text-status-warning-text">
                   {delayedCount}
                 </span>
               )}
@@ -162,14 +162,14 @@ export default function TimelinePage() {
               aria-pressed={outOfOrderOnly}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded border text-xs font-mono transition-colors ${
                 outOfOrderOnly
-                  ? 'border-status-error bg-status-error/15 text-status-error font-semibold'
+                  ? 'border-status-error-border bg-status-error-bg text-status-error-text font-semibold'
                   : 'border-border bg-background text-foreground-secondary hover:text-foreground hover:bg-surface'
               }`}
             >
               <AlertTriangle className="h-3 w-3" />
               <span>Out-of-Order Only</span>
               {outOfOrderCount > 0 && (
-                <span className="ml-0.5 rounded-full bg-status-error/20 px-1 py-0 text-[10px]">
+                <span className="ml-0.5 rounded-full bg-status-error-border px-1 py-0 text-[10px] text-status-error-text">
                   {outOfOrderCount}
                 </span>
               )}

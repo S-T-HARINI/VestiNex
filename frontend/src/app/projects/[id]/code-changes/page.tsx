@@ -83,7 +83,7 @@ export default function CodeChangesPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border pb-4 gap-4">
           <div>
             <h1 className="text-xl font-semibold text-foreground tracking-tight flex items-center gap-2">
-              <GitBranch className="h-5 w-5 text-accent" />
+              <GitBranch className="h-5 w-5 text-primary" />
               <span>Git Commits & Code Changes</span>
             </h1>
             <p className="text-xs text-foreground-secondary mt-0.5">
@@ -202,13 +202,13 @@ export default function CodeChangesPage() {
                             href={commitUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="font-mono text-xs font-semibold text-accent bg-accent/10 border border-accent/20 px-2 py-0.5 rounded hover:bg-accent/20 hover:underline flex items-center gap-1"
+                            className="font-mono text-xs font-semibold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded hover:bg-primary/20 hover:underline flex items-center gap-1"
                           >
                             <span>{commit.commitSha?.substring(0, 7)}</span>
                             <ExternalLink className="h-2.5 w-2.5 opacity-70" />
                           </a>
                         ) : (
-                          <span className="font-mono text-xs font-semibold text-accent bg-accent/10 border border-accent/20 px-2 py-0.5 rounded">
+                          <span className="font-mono text-xs font-semibold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded">
                             {commit.commitSha?.substring(0, 7)}
                           </span>
                         )}
@@ -251,7 +251,7 @@ export default function CodeChangesPage() {
                         href={commitUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-accent hover:underline flex items-center gap-1 font-mono"
+                        className="text-primary hover:underline flex items-center gap-1 font-mono"
                       >
                         <span>
                           {commitUrl.includes('/commit/') ? 'View on GitHub' : 'Pull Request'}

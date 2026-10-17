@@ -13,18 +13,18 @@ const badgeVariants = cva(
         primary: "border-primary/30 bg-primary/10 text-primary",
 
         // Semantic incident severities & statuses
-        critical: "border-status-error-border bg-status-error-bg text-status-error font-semibold",
-        destructive: "border-status-error-border bg-status-error-bg text-status-error",
-        high: "border-status-warning-border bg-status-warning-bg text-status-warning font-semibold",
-        medium: "border-status-warning-border bg-status-warning-bg text-status-warning",
+        critical: "border-status-error-border bg-status-error-bg text-status-error-text font-semibold",
+        destructive: "border-status-error-border bg-status-error-bg text-status-error-text",
+        high: "border-status-warning-border bg-status-warning-bg text-status-warning-text font-semibold",
+        medium: "border-status-warning-border bg-status-warning-bg text-status-warning-text",
         low: "border-border bg-surface text-foreground-secondary",
 
         // Statuses
-        success: "border-status-success-border bg-status-success-bg text-status-success font-medium",
-        running: "border-status-info-border bg-status-info-bg text-status-info",
-        rolled_back: "border-status-warning-border bg-status-warning-bg text-status-warning",
-        delayed: "border-status-warning-border bg-status-warning-bg text-status-warning font-mono",
-        neutral: "border-border bg-surface text-foreground-secondary",
+        success: "border-status-success-border bg-status-success-bg text-status-success-text font-medium",
+        running: "border-status-info-border bg-status-info-bg text-status-info-text",
+        rolled_back: "border-status-warning-border bg-status-warning-bg text-status-warning-text",
+        delayed: "border-status-warning-border bg-status-warning-bg text-status-warning-text font-mono",
+        neutral: "border-status-neutral-border bg-status-neutral-bg text-status-neutral-text",
       },
     },
     defaultVariants: {

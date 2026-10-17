@@ -38,7 +38,7 @@ export function Sidebar({ isMobileOpen, onCloseMobile }: SidebarProps) {
       href: projectId ? `/projects/${projectId}/incidents` : '/projects',
       icon: AlertOctagon,
       badge: activeProject?.incidentCount ? `${activeProject.incidentCount}` : undefined,
-      badgeColor: 'border-status-error-border bg-status-error-bg text-status-error',
+      badgeColor: 'border-status-error-border bg-status-error-bg text-status-error-text',
     },
     {
       name: 'Deployments',
