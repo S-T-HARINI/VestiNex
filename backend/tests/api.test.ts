@@ -660,4 +660,131 @@ describe('VestiNex Backend API Integration Tests', () => {
     );
     expect(invalidMembers.length).toBe(0);
   });
+
+  // 25. Workspace Isolation: Incident Assignee Eligibility & Member Filtering
+  it('Enforces workspace isolation for incident assignment: non-members cannot be assigned, and project members list only authorized users', async () => {
+    const emailLead = `lead_isol_${Date.now()}@example.com`;
+    const emailOutsider = `outsider_isol_${Date.now()}@example.com`;
+
+    // 1. Register Lead User and Outsider User
+    const resLead = await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'Lead Engineer', email: emailLead, password: 'password123' });
+    const cookieLead = resLead.headers['set-cookie'][0];
+    const userLead = resLead.body.user;
+
+    const resOutsider = await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'Outsider User', email: emailOutsider, password: 'password123' });
+    const userOutsider = resOutsider.body.user;
+
+    // 2. Lead User creates an isolated project
+    const projRes = await request(app)
+      .post('/api/projects')
+      .set('Cookie', cookieLead)
+      .send({
+        name: 'Isolated Incident Workspace',
+        description: 'Workspace to verify strict incident assignee boundaries',
+        environment: 'PRODUCTION',
+      });
+    const projId = projRes.body.project.id;
+
+    // 3. GET /api/projects/:id/members must contain ONLY Lead User
+    const membersRes1 = await request(app)
+      .get(`/api/projects/${projId}/members`)
+      .set('Cookie', cookieLead);
+    expect(membersRes1.status).toBe(200);
+    expect(membersRes1.body.members.length).toBe(1);
+    expect(membersRes1.body.members[0].user.id).toBe(userLead.id);
+    expect(membersRes1.body.members.some((m: any) => m.user.id === userOutsider.id)).toBe(false);
+
+    // 4. Attempt to create an incident assigned to non-member Outsider User -> must fail with 400
+    const failCreateInc = await request(app)
+      .post(`/api/projects/${projId}/incidents`)
+      .set('Cookie', cookieLead)
+      .send({
+        title: 'Unauthorized Assignee Test Incident',
+        description: 'Testing non-member assignment prevention',
+        severity: 'HIGH',
+        assignedToId: userOutsider.id,
+      });
+    expect(failCreateInc.status).toBe(400);
+    expect(failCreateInc.body.error).toContain('active member of this project workspace');
+    expect(failCreateInc.body.code).toBe('INVALID_ASSIGNEE');
+
+    // 5. Create incident assigned to valid member Lead User
+    const okCreateInc = await request(app)
+      .post(`/api/projects/${projId}/incidents`)
+      .set('Cookie', cookieLead)
+      .send({
+        title: 'Valid Member Incident',
+        description: 'Incident for workspace testing',
+        severity: 'MEDIUM',
+        assignedToId: userLead.id,
+      });
+    expect(okCreateInc.status).toBe(201);
+    const incidentId = okCreateInc.body.incident.id;
+
+    // 6. Attempt to update incident to assign non-member Outsider User -> must fail with 400
+    const failUpdateInc = await request(app)
+      .patch(`/api/incidents/${incidentId}`)
+      .set('Cookie', cookieLead)
+      .send({ assignedToId: userOutsider.id });
+    expect(failUpdateInc.status).toBe(400);
+    expect(failUpdateInc.body.error).toContain('active member of this project workspace');
+    expect(failUpdateInc.body.code).toBe('INVALID_ASSIGNEE');
+
+    // 7. Attempt to assign incident via assign endpoint to non-member Outsider User -> must fail with 400
+    const failAssignInc = await request(app)
+      .post(`/api/incidents/${incidentId}/assign`)
+      .set('Cookie', cookieLead)
+      .send({ assignedToId: userOutsider.id });
+    expect(failAssignInc.status).toBe(400);
+    expect(failAssignInc.body.error).toContain('active member of this project workspace');
+    expect(failAssignInc.body.code).toBe('INVALID_ASSIGNEE');
+
+    // 8. Lead User adds Outsider User as DEVELOPER member to the workspace
+    const addMemberRes = await request(app)
+      .post(`/api/projects/${projId}/members`)
+      .set('Cookie', cookieLead)
+      .send({ email: emailOutsider, role: 'DEVELOPER' });
+    expect(addMemberRes.status).toBe(201);
+
+    // Verify members list now contains both
+    const membersRes2 = await request(app)
+      .get(`/api/projects/${projId}/members`)
+      .set('Cookie', cookieLead);
+    expect(membersRes2.body.members.length).toBe(2);
+
+    // 9. Assign incident to newly added member -> succeeds with 200
+    const okAssignInc = await request(app)
+      .post(`/api/incidents/${incidentId}/assign`)
+      .set('Cookie', cookieLead)
+      .send({ assignedToId: userOutsider.id });
+    expect(okAssignInc.status).toBe(200);
+    expect(okAssignInc.body.incident.assignedToId).toBe(userOutsider.id);
+
+    // 10. Remove Outsider User from workspace
+    const removeMemberRes = await request(app)
+      .delete(`/api/projects/${projId}/members/${userOutsider.id}`)
+      .set('Cookie', cookieLead);
+    expect(removeMemberRes.status).toBe(200);
+
+    // 11. Attempting to assign Outsider User again now fails with 400
+    const failReassign = await request(app)
+      .post(`/api/incidents/${incidentId}/assign`)
+      .set('Cookie', cookieLead)
+      .send({ assignedToId: userOutsider.id });
+    expect(failReassign.status).toBe(400);
+    expect(failReassign.body.error).toContain('active member of this project workspace');
+    expect(failReassign.body.code).toBe('INVALID_ASSIGNEE');
+
+    // 12. Unassigning succeeds
+    const unassignRes = await request(app)
+      .post(`/api/incidents/${incidentId}/assign`)
+      .set('Cookie', cookieLead)
+      .send({ assignedToId: null });
+    expect(unassignRes.status).toBe(200);
+    expect(unassignRes.body.incident.assignedToId).toBeNull();
+  });
 });

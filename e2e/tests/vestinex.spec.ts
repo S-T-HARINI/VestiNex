@@ -57,6 +57,19 @@ test.describe('VestiNex Platform E2E Tests', () => {
     const noteContainer = page.locator('div').filter({ hasText: noteText }).last();
     await expect(noteContainer.getByText(/just now|\d+s ago/i)).toBeVisible();
     await expect(noteContainer.getByText(/5h ago/i)).not.toBeVisible();
+
+    // Regression test: Verify Assigned Lead SRE dropdown displays only workspace members and never leaks test accounts
+    const assigneeSelect = page.locator('select').filter({ has: page.locator('option[value="unassigned"]') });
+    await expect(assigneeSelect).toBeVisible();
+    const optionTexts = await assigneeSelect.locator('option').allInnerTexts();
+    // Options must not contain test domain accounts or non-members
+    expect(optionTexts.some((text: string) => text.includes('@vestinex-test.io'))).toBe(false);
+    expect(optionTexts.some((text: string) => text.includes('Alice Engineer'))).toBe(false);
+    expect(optionTexts.some((text: string) => text.includes('Bob Architect'))).toBe(false);
+    expect(optionTexts.some((text: string) => text.includes('Jordan Taylor'))).toBe(false);
+    // Options must contain Unassigned and legitimate workspace member(s)
+    expect(optionTexts.some((text: string) => text.includes('Unassigned'))).toBe(true);
+    expect(optionTexts.some((text: string) => text.includes('Alex Rivera') || text.includes('Sarah Chen'))).toBe(true);
   });
 
   test('Unauthenticated access to protected routes redirects to /login', async ({ page }) => {

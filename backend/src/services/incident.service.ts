@@ -233,6 +233,17 @@ export class IncidentService {
     const projRows = await pgDb.query('SELECT id FROM projects WHERE id = $1 LIMIT 1;', [projectId]);
     if (projRows.length === 0) throw new AppError('Project not found', 404);
 
+    const targetAssigneeId = data.assignedToId && data.assignedToId.trim() ? data.assignedToId.trim() : null;
+    if (targetAssigneeId) {
+      const memberRows = await pgDb.query<any>(
+        'SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2 LIMIT 1;',
+        [projectId, targetAssigneeId]
+      );
+      if (memberRows.length === 0) {
+        throw new AppError('The assigned user must be an active member of this project workspace.', 400, 'INVALID_ASSIGNEE');
+      }
+    }
+
     const now = new Date();
     const occurredAt = data.occurredAt ? new Date(data.occurredAt) : now;
     const initialStatus = data.status || 'OPEN';
@@ -254,7 +265,7 @@ export class IncidentService {
           data.severity,
           initialStatus,
           userId,
-          data.assignedToId || null,
+          targetAssigneeId,
           initialStatus === 'RESOLVED' || initialStatus === 'CLOSED' ? now : null,
           null,
           occurredAt,
@@ -369,11 +380,25 @@ export class IncidentService {
       }
     }
 
+    const targetAssigneeId = data.assignedToId !== undefined
+      ? (data.assignedToId && data.assignedToId.trim() ? data.assignedToId.trim() : null)
+      : inc.assigned_to_id;
+
+    if (targetAssigneeId && targetAssigneeId !== inc.assigned_to_id) {
+      const memberRows = await pgDb.query<any>(
+        'SELECT 1 FROM project_members WHERE project_id = $1 AND user_id = $2 LIMIT 1;',
+        [inc.project_id, targetAssigneeId]
+      );
+      if (memberRows.length === 0) {
+        throw new AppError('The assigned user must be an active member of this project workspace.', 400, 'INVALID_ASSIGNEE');
+      }
+    }
+
     const now = new Date();
     const updatedTitle = data.title !== undefined ? data.title : inc.title;
     const updatedDesc = data.description !== undefined ? data.description : inc.description;
     const updatedSeverity = data.severity !== undefined ? data.severity : inc.severity;
-    const updatedAssignee = data.assignedToId !== undefined ? data.assignedToId : inc.assigned_to_id;
+    const updatedAssignee = targetAssigneeId;
 
     return await pgDb.transaction(async (client) => {
       await client.query(
@@ -505,14 +530,24 @@ export class IncidentService {
     const eventId = `tle_${uuidv4().substring(0, 8)}`;
     const auditId = `aud_${uuidv4().substring(0, 8)}`;
 
+    const targetAssigneeId = assignedToId && assignedToId.trim() ? assignedToId.trim() : null;
     let assigneeName = 'Unassigned';
-    if (assignedToId) {
-      const userRows = await pgDb.query<{ name: string }>('SELECT name FROM users WHERE id = $1 LIMIT 1;', [assignedToId]);
-      if (userRows.length > 0) assigneeName = userRows[0].name;
+    if (targetAssigneeId) {
+      const memberRows = await pgDb.query<any>(
+        `SELECT u.id, u.name, u.email
+         FROM project_members pm
+         INNER JOIN users u ON u.id = pm.user_id
+         WHERE pm.project_id = $1 AND pm.user_id = $2 LIMIT 1;`,
+        [inc.project_id, targetAssigneeId]
+      );
+      if (memberRows.length === 0) {
+        throw new AppError('The assigned user must be an active member of this project workspace.', 400, 'INVALID_ASSIGNEE');
+      }
+      assigneeName = memberRows[0].name;
     }
 
     return await pgDb.transaction(async (client) => {
-      await client.query('UPDATE incidents SET assigned_to_id = $1, updated_at = $2 WHERE id = $3;', [assignedToId, now, id]);
+      await client.query('UPDATE incidents SET assigned_to_id = $1, updated_at = $2 WHERE id = $3;', [targetAssigneeId, now, id]);
 
       await client.query(
         `INSERT INTO timeline_events (id, project_id, type, title, description, metadata, entity_id, entity_type, occurred_at, ingested_at, created_at)
@@ -523,7 +558,7 @@ export class IncidentService {
           'INCIDENT_ASSIGNED',
           `Incident Assigned to ${assigneeName}`,
           'Ownership assigned for incident investigation.',
-          JSON.stringify({ assignedToId, previousAssignee: inc.assigned_to_id }),
+          JSON.stringify({ assignedToId: targetAssigneeId, previousAssignee: inc.assigned_to_id }),
           id,
           'INCIDENT',
           now,
@@ -535,12 +570,12 @@ export class IncidentService {
       await client.query(
         `INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, changes, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7);`,
-        [auditId, userId, 'INCIDENT_ASSIGNMENT', 'INCIDENT', id, JSON.stringify({ previousAssignee: inc.assigned_to_id, assignedToId }), now]
+        [auditId, userId, 'INCIDENT_ASSIGNMENT', 'INCIDENT', id, JSON.stringify({ previousAssignee: inc.assigned_to_id, assignedToId: targetAssigneeId }), now]
       );
 
       return {
         ...inc,
-        assignedToId,
+        assignedToId: targetAssigneeId,
         updatedAt: now,
       };
     });

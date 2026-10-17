@@ -20,13 +20,20 @@ export default function IncidentWorkspacePage() {
 
   const loadData = async () => {
     try {
-      const [incRes, usersRes] = await Promise.all([
+      const [incRes, membersRes] = await Promise.all([
         api.getIncident(incidentId),
-        api.getUsers(),
+        api.getProjectMembers(projectId),
       ]);
 
       if (incRes.incident) setIncident(incRes.incident);
-      if (usersRes.users) setUsers(usersRes.users);
+      if (membersRes?.members) {
+        const eligibleUsers = membersRes.members.map((m: any) => m.user).filter(Boolean);
+        // If current assignee exists and isn't in eligible list, include them to preserve existing assignment
+        if (incRes?.incident?.assignedTo && !eligibleUsers.some((u: any) => u.id === incRes.incident.assignedTo.id)) {
+          eligibleUsers.unshift(incRes.incident.assignedTo);
+        }
+        setUsers(eligibleUsers);
+      }
     } catch (err) {
       console.error(err);
     } finally {
