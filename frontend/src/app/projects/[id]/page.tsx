@@ -251,7 +251,7 @@ export default function ProjectDashboardPage() {
                   <Link
                     key={inc.id}
                     href={`/projects/${projectId}/incidents/${inc.id}`}
-                    className="block rounded border border-border bg-surface/50 p-2.5 hover:border-border-hover hover:bg-surface transition-colors"
+                    className="block rounded border border-border bg-surface/50 p-2.5 hover:border-foreground-muted/70 hover:bg-surface hover:-translate-y-0.5 hover:shadow-xs transition-all duration-200 motion-reduce:transition-none motion-reduce:transform-none cursor-pointer"
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-medium text-foreground truncate max-w-[260px]">
@@ -298,7 +298,7 @@ export default function ProjectDashboardPage() {
                   <Link
                     key={dep.id}
                     href={`/projects/${projectId}/deployments/${dep.id}`}
-                    className="block rounded border border-border bg-surface/50 p-2.5 hover:border-border-hover hover:bg-surface transition-colors"
+                    className="block rounded border border-border bg-surface/50 p-2.5 hover:border-foreground-muted/70 hover:bg-surface hover:-translate-y-0.5 hover:shadow-xs transition-all duration-200 motion-reduce:transition-none motion-reduce:transform-none cursor-pointer"
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-medium text-foreground font-mono">

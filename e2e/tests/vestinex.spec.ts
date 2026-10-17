@@ -9,9 +9,10 @@ test.describe('VestiNex Platform E2E Tests', () => {
     await page.waitForURL(/.*dashboard/);
   }
 
-  test('Landing page loads and displays brand, about section, and auth actions', async ({ page }) => {
+  test('Landing page loads and displays brand, about section, tagline, and auth actions', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'VestiNex', level: 1 })).toBeVisible();
+    await expect(page.getByText('WHO BROKE THE BUILD?').first()).toBeVisible();
     await expect(page.getByText(/VestiNex is an incident intelligence and deployment monitoring platform/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /^Login$/i }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: /Create Account/i }).first()).toBeVisible();

@@ -192,7 +192,7 @@ export default function CodeChangesPage() {
               return (
                 <div
                   key={commit.id}
-                  className="rounded-md border border-border bg-card p-4 space-y-2 hover:border-border-hover transition-colors"
+                  className="rounded-md border border-border bg-card p-4 space-y-2 hover:border-foreground-muted/70 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 motion-reduce:transition-none motion-reduce:transform-none"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-wrap">

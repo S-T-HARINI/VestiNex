@@ -374,7 +374,7 @@ export default function ProjectSettingsPage() {
             ) : (
               <div className="divide-y divide-border max-h-80 overflow-y-auto pr-1">
                 {auditLogs.slice(0, 20).map((log: any) => (
-                  <div key={log.id} className="py-2.5 flex items-start justify-between gap-3 text-xs">
+                  <div key={log.id} className="py-2.5 px-2 rounded flex items-start justify-between gap-3 text-xs hover:bg-surface/80 transition-all duration-200">
                     <div className="space-y-0.5 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <Badge variant="outline" className="text-[9px] font-mono uppercase px-1.5 py-0">

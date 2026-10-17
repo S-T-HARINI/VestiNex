@@ -220,7 +220,7 @@ export default function TimelinePage() {
                 return (
                   <div
                     key={event.id || idx}
-                    className="group flex flex-col sm:flex-row sm:items-start gap-2.5 sm:gap-4 p-3.5 hover:bg-surface/60 transition-colors"
+                    className="group flex flex-col sm:flex-row sm:items-start gap-2.5 sm:gap-4 p-3.5 hover:bg-surface/80 hover:shadow-xs transition-all duration-200 motion-reduce:transition-none"
                   >
                     {/* Timestamp column (consistent tabular alignment) */}
                     <div className="sm:w-36 shrink-0 flex items-center sm:flex-col sm:items-start justify-between sm:justify-start gap-1 font-mono text-[11px] tabular-nums">

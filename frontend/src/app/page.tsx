@@ -12,18 +12,23 @@ export default function LandingPage() {
           <div className="flex h-7 w-7 items-center justify-center rounded-[5px] bg-primary text-primary-foreground font-mono font-bold text-xs shadow-xs">
             <Radio className="h-4 w-4" />
           </div>
-          <span className="text-base font-semibold tracking-tight font-mono">VestiNex</span>
+          <div className="flex flex-col text-left">
+            <span className="text-base font-semibold tracking-tight font-mono leading-none">VestiNex</span>
+            <span className="text-[8.5px] font-mono tracking-wider text-foreground-muted font-medium uppercase mt-0.5 leading-none">
+              WHO BROKE THE BUILD?
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-2.5">
           <ThemeToggle variant="dropdown" />
           <Link href="/login">
-            <Button variant="ghost" size="sm" className="text-xs font-medium">
+            <Button variant="ghost" size="sm" className="text-xs font-medium hover:-translate-y-[1px] hover:shadow-xs transition-all duration-200">
               Login
             </Button>
           </Link>
           <Link href="/register">
-            <Button size="sm" className="text-xs font-medium">
+            <Button size="sm" className="text-xs font-medium hover:-translate-y-[1px] hover:shadow-sm transition-all duration-200">
               Create Account
             </Button>
           </Link>
@@ -39,9 +44,14 @@ export default function LandingPage() {
             <span>Incident Intelligence &amp; Deployment Monitoring</span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground font-mono">
-            VestiNex
-          </h1>
+          <div className="space-y-1">
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground font-mono leading-none">
+              VestiNex
+            </h1>
+            <p className="text-xs sm:text-sm font-semibold tracking-widest uppercase font-mono text-primary pt-1">
+              WHO BROKE THE BUILD?
+            </p>
+          </div>
           <p className="text-xs sm:text-sm font-medium text-foreground-secondary tracking-wide">
             Operational visibility and evidence-based incident investigations.
           </p>
@@ -50,13 +60,13 @@ export default function LandingPage() {
         {/* Clear Action Buttons */}
         <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
           <Link href="/login">
-            <Button size="default" className="text-xs font-medium gap-2 px-5 h-9">
+            <Button size="default" className="text-xs font-medium gap-2 px-5 h-9 hover:-translate-y-[2px] hover:shadow-md transition-all duration-200 cursor-pointer">
               <LogIn className="h-3.5 w-3.5" />
               <span>Login</span>
             </Button>
           </Link>
           <Link href="/register">
-            <Button size="default" variant="outline" className="text-xs font-medium gap-2 px-5 h-9">
+            <Button size="default" variant="outline" className="text-xs font-medium gap-2 px-5 h-9 hover:-translate-y-[2px] hover:shadow-sm hover:border-foreground-muted transition-all duration-200 cursor-pointer">
               <UserPlus className="h-3.5 w-3.5 text-primary" />
               <span>Create Account</span>
             </Button>

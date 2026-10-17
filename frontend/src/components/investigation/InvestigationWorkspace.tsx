@@ -324,7 +324,7 @@ export function InvestigationWorkspace({ incident, onRefresh, users, projectId }
                   {incident.deploymentLinks.map((link: any) => (
                     <div
                       key={link.id}
-                      className="rounded-md border border-border bg-surface p-3 flex items-start justify-between gap-3"
+                      className="rounded-md border border-border bg-surface p-3 flex items-start justify-between gap-3 hover:border-foreground-muted/60 hover:shadow-xs transition-all duration-200"
                     >
                       <div className="space-y-1 text-xs">
                         <div className="flex items-center gap-2">
@@ -644,10 +644,10 @@ export function InvestigationWorkspace({ incident, onRefresh, users, projectId }
                     return (
                       <div
                         key={dep.id}
-                        className={`rounded border p-3 space-y-2 text-xs transition-colors ${
+                        className={`rounded border p-3 space-y-2 text-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xs ${
                           sug.isLinked
                             ? 'border-status-success-border bg-status-success-bg'
-                            : 'border-border bg-surface'
+                            : 'border-border bg-surface hover:border-foreground-muted/60'
                         }`}
                       >
                         <div className="flex items-center justify-between">

@@ -135,10 +135,15 @@ export function Navbar({ onToggleMobileSidebar, isMobileSidebarOpen }: NavbarPro
           href="/dashboard"
           className="flex items-center gap-2 text-foreground font-semibold tracking-tight hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
         >
-          <div className="flex h-6 w-6 items-center justify-center rounded-[5px] bg-primary text-primary-foreground font-mono font-bold text-xs">
-            <Radio className="h-3.5 w-3.5" />
+          <div className="flex h-7 w-7 items-center justify-center rounded-[5px] bg-primary text-primary-foreground font-mono font-bold text-xs shrink-0 shadow-xs">
+            <Radio className="h-4 w-4" />
           </div>
-          <span className="text-sm font-semibold tracking-tight font-mono hidden xs:inline">VestiNex</span>
+          <div className="flex flex-col text-left">
+            <span className="text-sm font-semibold tracking-tight font-mono leading-none">VestiNex</span>
+            <span className="text-[8.5px] font-mono tracking-wider text-foreground-muted font-medium uppercase mt-0.5 leading-none hidden xs:inline">
+              WHO BROKE THE BUILD?
+            </span>
+          </div>
         </Link>
 
         <div className="h-3.5 w-px bg-border hidden sm:block" />

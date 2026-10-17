@@ -60,7 +60,7 @@ export function OperationalMetricsCard({ summary }: Props) {
       {metrics.map((m) => {
         const Icon = m.icon;
         return (
-          <Card key={m.label} className="border border-border bg-card">
+          <Card key={m.label} className="border border-border bg-card hover:border-foreground-muted/60 hover:-translate-y-0.5 hover:shadow-xs transition-all duration-200 motion-reduce:transition-none motion-reduce:transform-none">
             <CardContent className="p-3.5 sm:p-4">
               <div className="flex items-center justify-between text-xs text-foreground-secondary">
                 <span className="font-medium">{m.label}</span>

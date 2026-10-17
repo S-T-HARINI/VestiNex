@@ -8,7 +8,7 @@
 [![Express](https://img.shields.io/badge/Express-4.21-gray.svg)](https://expressjs.com/)
 [![Prisma](https://img.shields.io/badge/Prisma-5.22-teal.svg)](https://www.prisma.io/)
 [![Vitest](https://img.shields.io/badge/Vitest-56%20Passed-emerald.svg)](https://vitest.dev/)
-[![Playwright](https://img.shields.io/badge/Playwright-9%20Passed-emerald.svg)](https://playwright.dev/)
+[![Playwright](https://img.shields.io/badge/Playwright-10%20Passed-emerald.svg)](https://playwright.dev/)
 
 **GitHub Repository:** [https://github.com/S-T-HARINI/VestiNex.git](https://github.com/S-T-HARINI/VestiNex.git)
 
@@ -375,19 +375,20 @@ npm run build
 **Result:** `Compiled successfully (17 routes, 0 errors)`
 
 ### 3. Playwright End-to-End Tests
-Runs automated browser tests against the live application:
+Runs automated browser tests against the live application covering landing page, session auth, incident investigation workspace, note creation & real-time relative timestamps, strict project isolation, GitHub commit ingestion, top navigation jump menu, single shared record deploy action, and member invitation modal:
 ```bash
 cd e2e
 npx playwright test
 ```
-**Result:** `9 passed (31.2s across Chromium)`
+**Result:** `10 passed (33.4s across Chromium)`
 
 ---
 
 ## 15. Deliverable Documentation Links
 
-Detailed design and architecture specifications are located in the [`docs/`](docs/) directory:
+Detailed design, architecture specifications, and technical decisions are located in the repository:
 
+- 📑 **Technical Decisions & Submission Q&A:** [`DECISIONS.md`](DECISIONS.md) *(Approach to technical challenges, SSE vs WebSockets rationale, cross-service boundary limitations, and roadmap)*
 - 🗄️ **Database Schema & ER Diagram:** [`docs/database-schema.md`](docs/database-schema.md)
 - 🔄 **Application Workflow Diagrams:** [`docs/application-workflows.md`](docs/application-workflows.md)
 - 📡 **REST API Reference Specification:** [`docs/api-reference.md`](docs/api-reference.md)
@@ -399,11 +400,39 @@ Detailed design and architecture specifications are located in the [`docs/`](doc
 
 1. **Deployment Execution vs Monitoring**: VestiNex is an observability and correlation platform. It records, tracks, and correlates deployments via its API; it does not compile source code or trigger cloud provisioning directly.
 2. **Public vs Private Repositories**: The GitHub commit ingestion engine connects to public GitHub repositories via the unauthenticated GitHub REST API. Private repositories requiring OAuth access tokens are planned for future releases.
-3. **Optimistic Locking Scope**: Concurrency checking is currently applied to incident mutations and status transitions. Deployments utilize monotonic state transitions.
+3. **Single-Project Correlation Scoping**: Automated incident-to-deployment correlation is evaluated within the active project workspace to enforce strict multi-tenant privacy. Cross-service cascading failures originating across project boundaries require manual repository linking (see [`DECISIONS.md`](DECISIONS.md) Section 3).
+4. **Optimistic Locking Scope**: Concurrency checking is applied to incident mutations and status transitions. Deployments utilize monotonic state transitions.
 
 ---
 
-## 17. Docker Compose Setup
+## 17. Vercel & Production Deployment Guide
+
+VestiNex is architected as a Next.js 14 frontend and an Express.js / PostgreSQL backend.
+
+### Frontend Deployment on Vercel
+
+The frontend is fully compatible with Vercel:
+
+1. **Import Repository**: In the [Vercel Dashboard](https://vercel.com/new), select the GitHub repository `https://github.com/S-T-HARINI/VestiNex.git`.
+2. **Configure Project Settings**:
+   - **Framework Preset**: `Next.js`
+   - **Root Directory**: `frontend`
+   - **Build Command**: `npm run build` (or Next.js default)
+   - **Output Directory**: `.next` (default)
+3. **Set Environment Variables**:
+   ```env
+   NEXT_PUBLIC_API_URL=https://your-vestinex-backend.onrender.com
+   ```
+4. **Deploy**: Click **Deploy**. Vercel will compile the 17 static and dynamic App Router routes.
+
+> [!NOTE]
+> **Production Backend & Database Connectivity**: Because the Next.js frontend connects to the Express REST API via `NEXT_PUBLIC_API_URL`, the backend and PostgreSQL database should be hosted on a cloud container provider (e.g., Render, Railway, Fly.io, or AWS ECS) with a managed database (Supabase, Neon, or Railway PostgreSQL) to support live multi-user collaboration in production.
+>
+> Local Vercel CLI deployment on Windows (`vercel deploy`) requires Administrator / Developer Mode symlink privileges for Next.js serverless function output generation. Standard deployment via Git push to GitHub connected to Vercel is the recommended zero-configuration workflow.
+
+---
+
+## 18. Docker Compose Setup
 
 To orchestrate the full stack (PostgreSQL 16 + Express API + Next.js web) with a single command:
 
@@ -423,6 +452,6 @@ docker compose down
 
 ---
 
-## 18. License
+## 19. License
 
 Released under the [MIT License](LICENSE). Built for technical excellence, forensic accuracy, and reliable software delivery.

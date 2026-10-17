@@ -149,7 +149,7 @@ export default function DeploymentsListPage() {
             {deployments.map((dep) => (
               <div
                 key={dep.id}
-                className="rounded-md border border-border bg-card p-4 hover:border-border-hover transition-colors"
+                className="rounded-md border border-border bg-card p-4 hover:border-foreground-muted/70 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 motion-reduce:transition-none motion-reduce:transform-none"
               >
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="space-y-1.5">

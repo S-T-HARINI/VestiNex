@@ -142,7 +142,7 @@ export default function IncidentsListPage() {
               <Link
                 key={inc.id}
                 href={`/projects/${projectId}/incidents/${inc.id}`}
-                className="group block rounded-md border border-border bg-card p-4 hover:border-border-hover hover:bg-surface/60 transition-all"
+                className="group block rounded-md border border-border bg-card p-4 hover:border-foreground-muted/70 hover:bg-surface/80 hover:-translate-y-0.5 hover:shadow-sm transition-all duration-200 motion-reduce:transition-none motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                   <div className="space-y-1.5">

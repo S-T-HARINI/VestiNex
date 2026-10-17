@@ -67,6 +67,27 @@ export function Sidebar({ isMobileOpen, onCloseMobile }: SidebarProps) {
   const sidebarContent = (
     <div className="flex flex-col h-full justify-between p-2.5">
       <div className="space-y-3">
+        {/* Sidebar Brand Header */}
+        <div className="px-1 pt-0.5 pb-1.5 border-b border-border/60">
+          <Link
+            href="/dashboard"
+            onClick={onCloseMobile}
+            className="flex items-center gap-2 group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
+          >
+            <div className="flex h-6 w-6 items-center justify-center rounded-[5px] bg-primary text-primary-foreground font-mono font-bold text-xs shrink-0 group-hover:scale-105 transition-transform duration-200 shadow-xs">
+              <Radio className="h-3.5 w-3.5" />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="text-xs font-semibold tracking-tight font-mono text-foreground leading-none">
+                VestiNex
+              </span>
+              <span className="text-[8px] font-mono tracking-wider text-foreground-muted font-medium uppercase mt-0.5 leading-none">
+                WHO BROKE THE BUILD?
+              </span>
+            </div>
+          </Link>
+        </div>
+
         {/* Project Scope Indicator */}
         {activeProject ? (
           <div className="rounded-[6px] border border-border bg-surface/50 p-2 text-xs">
@@ -85,7 +106,7 @@ export function Sidebar({ isMobileOpen, onCloseMobile }: SidebarProps) {
           <Link
             href="/projects"
             onClick={onCloseMobile}
-            className="flex items-center gap-2 rounded-[6px] border border-dashed border-border p-2 text-xs text-foreground-secondary hover:text-foreground hover:bg-surface transition-colors"
+            className="flex items-center gap-2 rounded-[6px] border border-dashed border-border p-2 text-xs text-foreground-secondary hover:text-foreground hover:bg-surface hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
           >
             <FolderGit2 className="h-3.5 w-3.5 text-foreground-muted" />
             <span>Select or Create Project</span>
@@ -106,10 +127,10 @@ export function Sidebar({ isMobileOpen, onCloseMobile }: SidebarProps) {
                 key={item.name}
                 href={item.href}
                 onClick={onCloseMobile}
-                className={`group flex items-center justify-between rounded-[5px] px-2.5 py-1.5 text-xs font-medium transition-all duration-200 motion-reduce:transition-none motion-reduce:transform-none ${
+                className={`group flex items-center justify-between rounded-[5px] px-2.5 py-1.5 text-xs font-medium transition-all duration-200 motion-reduce:transition-none motion-reduce:transform-none cursor-pointer ${
                   isActive
                     ? 'bg-surface text-foreground font-semibold border border-border/80 shadow-xs'
-                    : 'text-foreground-secondary hover:bg-surface hover:text-foreground hover:border-border/60 hover:-translate-y-[1px] hover:shadow-xs border border-transparent'
+                    : 'text-foreground-secondary hover:bg-surface hover:text-foreground hover:border-border/80 hover:-translate-y-[2px] hover:shadow-xs border border-transparent'
                 } focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring`}
               >
                 <div className="flex items-center gap-2">
