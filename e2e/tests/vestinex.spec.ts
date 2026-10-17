@@ -70,6 +70,9 @@ test.describe('VestiNex Platform E2E Tests', () => {
     // Options must contain Unassigned and legitimate workspace member(s)
     expect(optionTexts.some((text: string) => text.includes('Unassigned'))).toBe(true);
     expect(optionTexts.some((text: string) => text.includes('Alex Rivera') || text.includes('Sarah Chen'))).toBe(true);
+
+    // Verify Invite Member action is visible
+    await expect(page.getByRole('button', { name: /Invite Member/i }).first()).toBeVisible();
   });
 
   test('Unauthenticated access to protected routes redirects to /login', async ({ page }) => {

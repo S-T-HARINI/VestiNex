@@ -18,7 +18,10 @@ import {
   Unlink,
   CheckCircle2,
   AlertTriangle,
+  AlertCircle,
   UserCheck,
+  UserPlus,
+  Users,
   Send,
   Sparkles,
   Info,
@@ -30,15 +33,72 @@ interface Props {
   incident: any;
   onRefresh: () => void;
   users: any[];
+  projectId?: string;
 }
 
-export function InvestigationWorkspace({ incident, onRefresh, users }: Props) {
+export function InvestigationWorkspace({ incident, onRefresh, users, projectId }: Props) {
+  const targetProjectId = projectId || incident.projectId || incident.project_id;
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   const [transitionStatus, setTransitionStatus] = useState<string>('');
   const [transitionNote, setTransitionNote] = useState('');
   const [resolutionNote, setResolutionNote] = useState('');
   const [showStatusModal, setShowStatusModal] = useState(false);
+
+  // Invite member state
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'ADMIN' | 'DEVELOPER' | 'VIEWER'>('DEVELOPER');
+  const [inviting, setInviting] = useState(false);
+  const [inviteError, setInviteError] = useState('');
+  const [inviteSuccess, setInviteSuccess] = useState('');
+  const [registeredCandidates, setRegisteredCandidates] = useState<any[]>([]);
+
+  const openInviteModal = async () => {
+    setInviteError('');
+    setInviteSuccess('');
+    setShowInviteModal(true);
+    try {
+      const res = await api.getUsers();
+      if (res?.users) {
+        const currentMemberIds = new Set(users.map((u) => u.id));
+        const filtered = res.users.filter(
+          (u: any) => !currentMemberIds.has(u.id) && !u.email.includes('@vestinex-test.io')
+        );
+        setRegisteredCandidates(filtered);
+      }
+    } catch (e) {
+      // fallback to manual email entry
+    }
+  };
+
+  const handleInviteMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail.trim() || !targetProjectId) return;
+
+    setInviting(true);
+    setInviteError('');
+    setInviteSuccess('');
+
+    try {
+      const res = await api.addProjectMember(targetProjectId, {
+        email: inviteEmail.trim(),
+        role: inviteRole,
+      });
+      const addedUserName = res.member?.user?.name || inviteEmail.trim();
+      setInviteSuccess(`Successfully added ${addedUserName} to this project workspace!`);
+      setInviteEmail('');
+      await onRefresh();
+      setTimeout(() => {
+        setShowInviteModal(false);
+        setInviteSuccess('');
+      }, 1200);
+    } catch (err: any) {
+      setInviteError(err.message || 'Failed to add member to project workspace');
+    } finally {
+      setInviting(false);
+    }
+  };
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -411,19 +471,62 @@ export function InvestigationWorkspace({ incident, onRefresh, users }: Props) {
             </CardHeader>
             <CardContent className="space-y-3 text-xs">
               <div>
-                <label className="text-[10px] uppercase font-semibold text-foreground-muted">Assigned Lead SRE</label>
-                <select
-                  value={incident.assignedToId || 'unassigned'}
-                  onChange={(e) => handleAssigneeChange(e.target.value)}
-                  className="mt-1 w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
-                >
-                  <option value="unassigned">Unassigned</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} ({u.email})
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] uppercase font-semibold text-foreground-muted">Assigned Lead SRE</label>
+                  <button
+                    type="button"
+                    onClick={openInviteModal}
+                    className="text-[10px] text-primary hover:underline font-medium inline-flex items-center gap-1"
+                  >
+                    <UserPlus className="h-3 w-3" />
+                    <span>Invite Member</span>
+                  </button>
+                </div>
+
+                {users.length === 0 ? (
+                  <div className="mt-1.5 rounded border border-dashed border-border bg-card/40 p-2.5 text-center text-xs space-y-1">
+                    <p className="text-foreground-muted">No eligible assignees in this project workspace.</p>
+                    <p className="text-[10px] text-foreground-secondary">
+                      Only registered users added to this workspace can be assigned.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={openInviteModal}
+                      className="mt-1 text-xs h-7 gap-1"
+                    >
+                      <UserPlus className="h-3 w-3" />
+                      <span>Invite Registered User</span>
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <select
+                      value={incident.assignedToId || 'unassigned'}
+                      onChange={(e) => handleAssigneeChange(e.target.value)}
+                      className="mt-1 w-full rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                    >
+                      <option value="unassigned">Unassigned</option>
+                      {users.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name} ({u.email})
+                        </option>
+                      ))}
+                    </select>
+                    <div className="mt-1 flex items-center justify-between text-[10px] text-foreground-muted">
+                      <span>{users.length} eligible project {users.length === 1 ? 'member' : 'members'}</span>
+                      <button
+                        type="button"
+                        onClick={openInviteModal}
+                        className="text-primary hover:underline font-medium inline-flex items-center gap-1"
+                      >
+                        <UserPlus className="h-3 w-3" />
+                        <span>+ Invite Member</span>
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
 
               <div>
@@ -585,6 +688,104 @@ export function InvestigationWorkspace({ incident, onRefresh, users }: Props) {
                 Confirm Transition
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invite Member to Workspace Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-lg border border-border bg-card p-5 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <UserPlus className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">Invite Member to Project Workspace</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setShowInviteModal(false); setInviteError(''); setInviteSuccess(''); }}
+                className="text-foreground-muted hover:text-foreground text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-foreground-secondary leading-relaxed">
+              Connect a genuine registered user to this project workspace. Once invited, they will be granted authorized access to project incidents and will appear as an eligible assignee.
+            </p>
+
+            {inviteError && (
+              <div className="rounded border border-status-error/30 bg-status-error/10 p-2.5 text-xs text-status-error flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-status-error" />
+                <span>{inviteError}</span>
+              </div>
+            )}
+
+            {inviteSuccess && (
+              <div className="rounded border border-status-success/30 bg-status-success/10 p-2.5 text-xs text-status-success flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-status-success" />
+                <span>{inviteSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleInviteMember} className="space-y-3.5">
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium text-foreground">Registered User Email *</label>
+                <Input
+                  type="email"
+                  list="registered-candidates-list"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="e.g. admin3@gmail.com"
+                  required
+                  className="text-xs"
+                />
+                <datalist id="registered-candidates-list">
+                  {registeredCandidates.map((u) => (
+                    <option key={u.id} value={u.email}>
+                      {u.name} ({u.email})
+                    </option>
+                  ))}
+                </datalist>
+                <span className="text-[10px] text-foreground-muted">
+                  User must already have a registered account in the system.
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium text-foreground">Project Workspace Role</label>
+                <select
+                  value={inviteRole}
+                  onChange={(e: any) => setInviteRole(e.target.value)}
+                  className="w-full rounded border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
+                >
+                  <option value="DEVELOPER">DEVELOPER — Respond, investigate & resolve incidents</option>
+                  <option value="ADMIN">ADMIN — Full project administration & member access</option>
+                  <option value="VIEWER">VIEWER — Read-only observation & audit access</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setShowInviteModal(false); setInviteError(''); setInviteSuccess(''); }}
+                  className="text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={inviting || !inviteEmail.trim()}
+                  className="text-xs gap-1"
+                >
+                  <UserPlus className="h-3 w-3" />
+                  <span>{inviting ? 'Inviting...' : 'Invite to Workspace'}</span>
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

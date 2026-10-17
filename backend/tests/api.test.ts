@@ -764,6 +764,15 @@ describe('VestiNex Backend API Integration Tests', () => {
     expect(okAssignInc.status).toBe(200);
     expect(okAssignInc.body.incident.assignedToId).toBe(userOutsider.id);
 
+    // Verify assignment persistence across fresh GET incident query
+    const getIncRes = await request(app)
+      .get(`/api/incidents/${incidentId}`)
+      .set('Cookie', cookieLead);
+    expect(getIncRes.status).toBe(200);
+    expect(getIncRes.body.incident.assignedToId).toBe(userOutsider.id);
+    expect(getIncRes.body.incident.assignedTo?.id).toBe(userOutsider.id);
+    expect(getIncRes.body.incident.assignedTo?.name).toBe('Outsider User');
+
     // 10. Remove Outsider User from workspace
     const removeMemberRes = await request(app)
       .delete(`/api/projects/${projId}/members/${userOutsider.id}`)

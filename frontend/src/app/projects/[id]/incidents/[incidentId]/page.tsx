@@ -73,6 +73,7 @@ export default function IncidentWorkspacePage() {
             incident={incident}
             onRefresh={loadData}
             users={users}
+            projectId={projectId}
           />
         )}
       </div>
