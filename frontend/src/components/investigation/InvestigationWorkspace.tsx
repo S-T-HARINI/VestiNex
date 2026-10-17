@@ -46,9 +46,12 @@ export function InvestigationWorkspace({ incident, onRefresh, users }: Props) {
 
     setSubmittingComment(true);
     try {
-      await api.addComment(incident.id, commentText);
+      const res = await api.addComment(incident.id, commentText);
       setCommentText('');
-      onRefresh();
+      if (res?.comment && incident?.comments) {
+        incident.comments.push(res.comment);
+      }
+      await onRefresh();
     } catch (err) {
       console.error(err);
     } finally {

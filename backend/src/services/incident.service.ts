@@ -627,7 +627,7 @@ export class IncidentService {
       await client.query(
         `INSERT INTO comments (id, incident_id, user_id, content, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6);`,
-        [commentId, incidentId, userId, content, now, now]
+        [commentId, incidentId, userId, content, now.toISOString(), now.toISOString()]
       );
 
       await client.query(
@@ -642,9 +642,9 @@ export class IncidentService {
           JSON.stringify({ incidentId, commentId }),
           commentId,
           'COMMENT',
-          now,
-          now,
-          now,
+          now.toISOString(),
+          now.toISOString(),
+          now.toISOString(),
         ]
       );
 
@@ -656,8 +656,8 @@ export class IncidentService {
         incidentId,
         userId,
         content,
-        createdAt: now,
-        updatedAt: now,
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
         user: user ? { id: user.id, name: user.name, email: user.email, avatarUrl: user.avatar_url } : null,
       };
     });

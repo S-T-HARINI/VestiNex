@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
-import { PGlite } from '@electric-sql/pglite';
-import { Pool } from 'pg';
+import pg, { Pool } from 'pg';
+import { PGlite, types as pgliteTypes } from '@electric-sql/pglite';
 import {
   User,
   Project,
@@ -19,6 +19,18 @@ import {
   DeploymentStatus,
   IncidentStatus,
 } from '../types';
+
+// Force UTC parsing for TIMESTAMP (OID 1114) to prevent local timezone distortion
+export const utcTimestampParser = (str: string | null) => {
+  if (!str) return null;
+  const isoStr = str.includes('T') ? str : str.replace(' ', 'T');
+  return new Date(isoStr.endsWith('Z') ? isoStr : isoStr + 'Z');
+};
+
+pg.types.setTypeParser(1114, utcTimestampParser);
+if (pgliteTypes?.parsers) {
+  pgliteTypes.parsers[1114] = utcTimestampParser;
+}
 
 export class PostgresService {
   private pglite: PGlite | null = null;
@@ -67,7 +79,11 @@ export class PostgresService {
         // For automated tests and verification scripts, use an isolated directory to avoid polluting user workspace
         const defaultDir = process.env.NODE_ENV === 'test' ? 'pgdata_test' : 'pgdata';
         const dataDir = path.resolve(process.cwd(), process.env.PGDATA_DIR || defaultDir);
-        this.pglite = new PGlite(dataDir);
+        this.pglite = new PGlite(dataDir, {
+          parsers: {
+            1114: utcTimestampParser,
+          },
+        });
         console.log(`[PostgreSQL] Initialized persistent PostgreSQL 16 engine at ${dataDir}`);
       }
 

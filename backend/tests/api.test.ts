@@ -178,6 +178,42 @@ describe('VestiNex Backend API Integration Tests', () => {
     expect(res.body.comment.content).toContain('Analyzing consumer group');
   });
 
+  // 11b. Regression test: Activity note receives accurate UTC insertion timestamp without timezone distortion
+  it('POST & GET /api/incidents/:id/comments persists accurate UTC timestamp without timezone offset distortion', async () => {
+    const beforePost = Date.now();
+    const commentContent = `Telemetry timestamp verification note at ${beforePost}`;
+
+    const postRes = await request(app)
+      .post(`/api/incidents/${createdIncidentId}/comments`)
+      .set('Cookie', authCookie)
+      .send({ content: commentContent });
+
+    expect(postRes.status).toBe(201);
+    expect(postRes.body.success).toBe(true);
+
+    const postCreatedAt = new Date(postRes.body.comment.createdAt).getTime();
+    expect(Math.abs(postCreatedAt - beforePost)).toBeLessThan(5000);
+
+    // Retrieve via GET incident to verify database persistence & type parsing
+    const getRes = await request(app)
+      .get(`/api/incidents/${createdIncidentId}`)
+      .set('Cookie', authCookie);
+
+    expect(getRes.status).toBe(200);
+    const persistedComment = getRes.body.incident.comments.find(
+      (c: any) => c.content === commentContent
+    );
+    expect(persistedComment).toBeDefined();
+
+    const persistedCreatedAt = new Date(persistedComment.createdAt).getTime();
+    const now = Date.now();
+    const elapsedSeconds = Math.round((now - persistedCreatedAt) / 1000);
+
+    // Elapsed seconds must be near-zero (< 5s), NOT distorted by local timezone offset (e.g. ~5.5 hours / ~19800s)
+    expect(elapsedSeconds).toBeGreaterThanOrEqual(0);
+    expect(elapsedSeconds).toBeLessThan(5);
+  });
+
   // 12. Transition incident status to RESOLVED
   it('PATCH /api/incidents/:id/status transitions incident to RESOLVED', async () => {
     const res = await request(app)

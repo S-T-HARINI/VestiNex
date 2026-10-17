@@ -44,6 +44,19 @@ test.describe('VestiNex Platform E2E Tests', () => {
     await expect(page.getByText('Chronological Failure Reconstruction Timeline')).toBeVisible({ timeout: 15000 });
     await expect(page.getByText('Deployment Correlation Leads')).toBeVisible();
     await expect(page.getByText('Evidence Policy')).toBeVisible();
+
+    // Regression test: Submit new activity note and verify immediate display with accurate relative timestamp
+    const noteText = `SRE hypothesis note logged at ${Date.now()}`;
+    await page.getByPlaceholder(/Add technical hypothesis, runbook step, or log snippet/i).fill(noteText);
+    await page.getByRole('button', { name: /Send/i }).click();
+
+    // Verify note is rendered immediately in the activity stream
+    await expect(page.getByText(noteText)).toBeVisible({ timeout: 10000 });
+
+    // Verify relative timestamp shows 'just now' or '\ds ago' and does NOT display '5h ago'
+    const noteContainer = page.locator('div').filter({ hasText: noteText }).last();
+    await expect(noteContainer.getByText(/just now|\d+s ago/i)).toBeVisible();
+    await expect(noteContainer.getByText(/5h ago/i)).not.toBeVisible();
   });
 
   test('Unauthenticated access to protected routes redirects to /login', async ({ page }) => {
