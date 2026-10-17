@@ -173,8 +173,12 @@ export default function DashboardPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {projects.map((p) => (
-                  <Link key={p.id} href={`/projects/${p.id}`} className="block group">
-                    <Card className="border border-border bg-card hover:border-foreground-muted transition-colors h-full">
+                  <Link
+                    key={p.id}
+                    href={`/projects/${p.id}`}
+                    className="block group rounded-lg focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <Card className="border border-border bg-card hover:border-foreground-muted/70 hover:-translate-y-[2px] hover:shadow-sm transition-all duration-200 motion-reduce:transition-none motion-reduce:transform-none h-full">
                       <CardContent className="p-4 space-y-2.5">
                         <div className="flex items-start justify-between gap-2">
                           <h3 className="font-semibold text-xs text-foreground group-hover:text-primary transition-colors truncate">

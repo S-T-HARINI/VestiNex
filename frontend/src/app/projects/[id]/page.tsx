@@ -116,12 +116,6 @@ export default function ProjectDashboardPage() {
                 <span>Report Incident</span>
               </Button>
             </Link>
-            <Link href={`/projects/${projectId}/deployments/new`}>
-              <Button size="sm" className="h-8 text-xs gap-1.5">
-                <Rocket className="h-3.5 w-3.5" />
-                <span>Record Deploy</span>
-              </Button>
-            </Link>
           </div>
         </div>
 

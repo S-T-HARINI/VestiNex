@@ -106,11 +106,11 @@ export function Sidebar({ isMobileOpen, onCloseMobile }: SidebarProps) {
                 key={item.name}
                 href={item.href}
                 onClick={onCloseMobile}
-                className={`group flex items-center justify-between rounded-[5px] px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                className={`group flex items-center justify-between rounded-[5px] px-2.5 py-1.5 text-xs font-medium transition-all duration-200 motion-reduce:transition-none motion-reduce:transform-none ${
                   isActive
-                    ? 'bg-surface text-foreground font-semibold border border-border/80'
-                    : 'text-foreground-secondary hover:bg-surface hover:text-foreground border border-transparent'
-                }`}
+                    ? 'bg-surface text-foreground font-semibold border border-border/80 shadow-xs'
+                    : 'text-foreground-secondary hover:bg-surface hover:text-foreground hover:border-border/60 hover:-translate-y-[1px] hover:shadow-xs border border-transparent'
+                } focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring`}
               >
                 <div className="flex items-center gap-2">
                   <Icon

@@ -3,20 +3,20 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-[6px] text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-[6px] text-xs font-medium transition-all duration-200 motion-reduce:transition-none motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground hover:opacity-90 active:opacity-100 shadow-sm",
+          "bg-primary text-primary-foreground hover:opacity-90 hover:-translate-y-[1px] active:translate-y-0 active:opacity-100 shadow-sm",
         secondary:
-          "bg-surface text-foreground border border-border hover:bg-background-secondary active:bg-surface",
+          "bg-surface text-foreground border border-border hover:bg-background-secondary hover:border-foreground-muted/50 hover:-translate-y-[1px] active:translate-y-0 active:bg-surface",
         outline:
-          "border border-border bg-transparent text-foreground hover:bg-surface active:bg-background-secondary",
+          "border border-border bg-transparent text-foreground hover:bg-surface hover:border-foreground-muted/50 hover:-translate-y-[1px] active:translate-y-0 active:bg-background-secondary",
         ghost:
-          "text-foreground-secondary hover:text-foreground hover:bg-surface active:bg-background-secondary",
+          "text-foreground-secondary hover:text-foreground hover:bg-surface hover:-translate-y-[1px] active:translate-y-0 active:bg-background-secondary",
         destructive:
-          "bg-status-error-bg text-status-error-text border border-status-error-border hover:opacity-90 active:opacity-100",
+          "bg-status-error-bg text-status-error-text border border-status-error-border hover:opacity-90 hover:-translate-y-[1px] active:translate-y-0 active:opacity-100",
         link:
           "text-primary underline-offset-4 hover:underline p-0 h-auto font-normal",
       },

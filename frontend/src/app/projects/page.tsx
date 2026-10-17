@@ -92,8 +92,12 @@ export default function ProjectsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {projects.map((p) => (
-              <Link key={p.id} href={`/projects/${p.id}`} className="group block h-full">
-                <Card className="h-full border border-border bg-card hover:border-foreground-muted transition-colors flex flex-col justify-between">
+              <Link
+                key={p.id}
+                href={`/projects/${p.id}`}
+                className="group block h-full rounded-lg focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <Card className="h-full border border-border bg-card hover:border-foreground-muted/70 hover:-translate-y-[2px] hover:shadow-sm transition-all duration-200 motion-reduce:transition-none motion-reduce:transform-none flex flex-col justify-between">
                   <CardContent className="p-4 space-y-3">
                     <div className="flex items-start justify-between gap-2">
                       <span className="font-semibold text-foreground text-xs group-hover:text-primary transition-colors truncate">

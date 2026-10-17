@@ -9,10 +9,12 @@ test.describe('VestiNex Platform E2E Tests', () => {
     await page.waitForURL(/.*dashboard/);
   }
 
-  test('Landing page loads and displays brand tagline', async ({ page }) => {
+  test('Landing page loads and displays brand, about section, and auth actions', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByText('Every failure leaves a trace.')).toBeVisible();
-    await expect(page.getByRole('button', { name: /Open Platform|Launch Live Investigation/i }).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'VestiNex', level: 1 })).toBeVisible();
+    await expect(page.getByText(/VestiNex is an incident intelligence and deployment monitoring platform/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Login$/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /Create Account/i }).first()).toBeVisible();
   });
 
   test('Sign-in via credentials navigates to dashboard', async ({ page }) => {
@@ -229,6 +231,40 @@ test.describe('VestiNex Platform E2E Tests', () => {
     // 5. Verify success feedback and imported commits
     await expect(page.getByText(/Successfully imported|already up to date/i)).toBeVisible({ timeout: 15000 });
     await expect(page.getByText('main').first()).toBeVisible({ timeout: 10000 });
+  });
+
+  test('Top Navigation Jump Menu and single Record Deploy action in shared header', async ({ page }) => {
+    await loginAsAdmin(page);
+
+    // Open first project
+    await page.getByText('Checkout & Payment Engine').first().click();
+    await page.waitForURL(/.*\/projects\/.+/);
+
+    // Verify exactly one "Record Deploy" button is present in the dashboard header area
+    const recordDeployBtns = page.getByRole('button', { name: /Record Deploy/i });
+    await expect(recordDeployBtns).toHaveCount(1);
+    await expect(recordDeployBtns.first()).toBeVisible();
+
+    // Verify clicking Record Deploy opens the new deployment form
+    await recordDeployBtns.first().click();
+    await page.waitForURL(/.*\/deployments\/new/);
+    await expect(page.getByText('Record New Deployment')).toBeVisible();
+
+    // Verify Top Navigation Jump Menu works to jump to Chronological Timeline
+    const jumpBtn = page.getByRole('button', { name: /Jump to section/i });
+    await expect(jumpBtn).toBeVisible();
+    await jumpBtn.click();
+
+    // Click Chronological Timeline in Jump menu
+    await page.getByRole('menuitem', { name: /Chronological Timeline/i }).click();
+    await page.waitForURL(/.*\/timeline/);
+    await expect(page.getByText('Unified Chronological Event Timeline')).toBeVisible();
+
+    // Jump to Incident Workspace via Jump Menu
+    await page.getByRole('button', { name: /Jump to section/i }).click();
+    await page.getByRole('menuitem', { name: /Incident Workspace/i }).click();
+    await page.waitForURL(/.*\/incidents/);
+    await expect(page.getByText('Incident Investigation Log')).toBeVisible();
   });
 });
 
