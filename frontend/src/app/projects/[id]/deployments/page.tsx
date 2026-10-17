@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CopyButton } from '@/components/ui/copy-button';
 import { formatDate, formatTimeRelative } from '@/lib/utils';
 import {
   Rocket,
@@ -63,19 +64,19 @@ export default function DeploymentsListPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
           <div>
-            <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-              <Rocket className="h-5 w-5 text-cyan-400" />
+            <h1 className="text-xl font-semibold text-foreground tracking-tight flex items-center gap-2">
+              <Rocket className="h-5 w-5 text-accent" />
               <span>Deployment Stream</span>
             </h1>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-foreground-secondary">
               Track versions, Git commits, rollback actions, and status lifecycles.
             </p>
           </div>
 
           <Link href={`/projects/${projectId}/deployments/new`}>
-            <Button size="sm" className="bg-indigo-600 hover:bg-indigo-500 text-xs gap-1.5">
+            <Button size="sm" className="text-xs gap-1.5">
               <Plus className="h-3.5 w-3.5" />
               <span>Record Deployment</span>
             </Button>
@@ -83,8 +84,8 @@ export default function DeploymentsListPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/60 p-3 text-xs">
-          <div className="flex items-center gap-1.5 text-slate-400 font-medium">
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-surface p-3 text-xs">
+          <div className="flex items-center gap-1.5 text-foreground-secondary font-medium">
             <Filter className="h-3.5 w-3.5" />
             <span>Filters:</span>
           </div>
@@ -92,7 +93,7 @@ export default function DeploymentsListPage() {
           <select
             value={envFilter}
             onChange={(e) => setEnvFilter(e.target.value)}
-            className="rounded border border-slate-700 bg-slate-950 px-2.5 py-1 text-slate-200 focus:outline-none focus:border-indigo-500"
+            className="rounded border border-border bg-background px-2.5 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-accent text-xs"
           >
             <option value="">All Environments</option>
             <option value="PRODUCTION">PRODUCTION</option>
@@ -103,7 +104,7 @@ export default function DeploymentsListPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded border border-slate-700 bg-slate-950 px-2.5 py-1 text-slate-200 focus:outline-none focus:border-indigo-500"
+            className="rounded border border-border bg-background px-2.5 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-accent text-xs"
           >
             <option value="">All Statuses</option>
             <option value="SUCCESSFUL">SUCCESSFUL</option>
@@ -121,7 +122,7 @@ export default function DeploymentsListPage() {
                 setEnvFilter('');
                 setStatusFilter('');
               }}
-              className="h-7 text-xs text-slate-400 hover:text-slate-200"
+              className="h-7 text-xs text-foreground-secondary hover:text-foreground"
             >
               Reset Filters
             </Button>
@@ -132,28 +133,28 @@ export default function DeploymentsListPage() {
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-24 rounded-lg" />
+              <Skeleton key={i} className="h-24 rounded-md" />
             ))}
           </div>
         ) : deployments.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-slate-800 p-12 text-center space-y-2">
-            <Rocket className="h-8 w-8 text-slate-600 mx-auto" />
-            <h3 className="text-sm font-semibold text-slate-300">No Deployments Found</h3>
-            <p className="text-xs text-slate-500">
+          <div className="rounded-md border border-dashed border-border p-12 text-center space-y-2">
+            <Rocket className="h-8 w-8 text-foreground-muted mx-auto" />
+            <h3 className="text-sm font-semibold text-foreground">No Deployments Found</h3>
+            <p className="text-xs text-foreground-muted">
               No deployments recorded matching the active criteria.
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {deployments.map((dep) => (
               <div
                 key={dep.id}
-                className="rounded-lg border border-slate-800 bg-slate-900/40 p-4 hover:border-slate-700 transition-colors"
+                className="rounded-md border border-border bg-card p-4 hover:border-border-hover transition-colors"
               >
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-white text-sm font-mono">{dep.version}</span>
+                      <span className="font-semibold text-foreground text-sm font-mono">{dep.version}</span>
                       <Badge variant="outline" className="text-[10px]">
                         {dep.environment}
                       </Badge>
@@ -173,16 +174,17 @@ export default function DeploymentsListPage() {
                       >
                         {dep.status}
                       </Badge>
-                      <span className="font-mono text-xs text-slate-400">
-                        Commit: {dep.commitSha?.substring(0, 7)} ({dep.branch})
-                      </span>
+                      <div className="flex items-center gap-1 font-mono text-xs text-foreground-secondary">
+                        <span>Commit: {dep.commitSha?.substring(0, 7)} ({dep.branch})</span>
+                        <CopyButton text={dep.commitSha} />
+                      </div>
                     </div>
 
-                    <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+                    <p className="text-xs text-foreground-secondary max-w-2xl leading-relaxed">
                       {dep.releaseNotes || 'Standard deployment rollout.'}
                     </p>
 
-                    <div className="flex items-center gap-4 text-[11px] text-slate-500 font-mono">
+                    <div className="flex items-center gap-4 text-[11px] text-foreground-muted font-mono tabular-nums flex-wrap">
                       <span>Triggered by: {dep.triggeredBy?.name || 'CI/CD Workflow'}</span>
                       <span>•</span>
                       <span>Occurred: {formatDate(dep.occurredAt)}</span>
@@ -201,7 +203,7 @@ export default function DeploymentsListPage() {
                       <Button
                         size="sm"
                         onClick={() => handleQuickStatusUpdate(dep.id, 'SUCCESSFUL')}
-                        className="h-7 text-xs bg-emerald-600 hover:bg-emerald-500 text-white gap-1"
+                        className="h-7 text-xs gap-1"
                       >
                         <CheckCircle2 className="h-3 w-3" />
                         <span>Mark Success</span>
@@ -213,7 +215,7 @@ export default function DeploymentsListPage() {
                         size="sm"
                         variant="outline"
                         onClick={() => handleQuickStatusUpdate(dep.id, 'ROLLED_BACK')}
-                        className="h-7 text-xs text-purple-300 border-purple-500/30 hover:bg-purple-950/20 gap-1"
+                        className="h-7 text-xs gap-1"
                       >
                         <RotateCcw className="h-3 w-3" />
                         <span>Rollback</span>
@@ -221,7 +223,7 @@ export default function DeploymentsListPage() {
                     )}
 
                     <Link href={`/projects/${projectId}/deployments/${dep.id}`}>
-                      <Button size="sm" variant="ghost" className="h-7 text-xs text-indigo-400 hover:text-indigo-300">
+                      <Button size="sm" variant="ghost" className="h-7 text-xs text-accent hover:text-accent-hover">
                         <span>Details</span>
                         <ArrowRight className="h-3 w-3 ml-1" />
                       </Button>

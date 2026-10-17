@@ -43,7 +43,7 @@ export default function IncidentWorkspacePage() {
       <div className="space-y-4">
         <Link
           href={`/projects/${projectId}/incidents`}
-          className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200"
+          className="inline-flex items-center gap-1.5 text-xs text-foreground-secondary hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           <span>Back to All Incidents</span>
@@ -51,14 +51,14 @@ export default function IncidentWorkspacePage() {
 
         {loading ? (
           <div className="space-y-4">
-            <Skeleton className="h-32 w-full rounded-lg" />
+            <Skeleton className="h-32 w-full rounded-md" />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Skeleton className="h-96 lg:col-span-2 rounded-lg" />
-              <Skeleton className="h-96 rounded-lg" />
+              <Skeleton className="h-96 lg:col-span-2 rounded-md" />
+              <Skeleton className="h-96 rounded-md" />
             </div>
           </div>
         ) : !incident ? (
-          <div className="p-8 text-center text-xs text-slate-500">
+          <div className="p-8 text-center text-xs text-foreground-muted">
             Incident not found or access denied.
           </div>
         ) : (

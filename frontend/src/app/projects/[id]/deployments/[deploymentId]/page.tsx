@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CopyButton } from '@/components/ui/copy-button';
 import { formatDate, formatTimeRelative } from '@/lib/utils';
 import {
   Rocket,
@@ -61,8 +62,8 @@ export default function DeploymentDetailPage() {
       <AppLayout>
         <div className="space-y-4">
           <Skeleton className="h-8 w-40" />
-          <Skeleton className="h-40 w-full" />
-          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-40 w-full rounded-md" />
+          <Skeleton className="h-64 w-full rounded-md" />
         </div>
       </AppLayout>
     );
@@ -71,7 +72,7 @@ export default function DeploymentDetailPage() {
   if (!deployment) {
     return (
       <AppLayout>
-        <div className="p-8 text-center text-xs text-slate-500">
+        <div className="p-8 text-center text-xs text-foreground-muted">
           Deployment not found or access denied.
         </div>
       </AppLayout>
@@ -83,14 +84,14 @@ export default function DeploymentDetailPage() {
       <div className="space-y-6">
         <Link
           href={`/projects/${projectId}/deployments`}
-          className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200"
+          className="inline-flex items-center gap-1.5 text-xs text-foreground-secondary hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           <span>Back to Deployments</span>
         </Link>
 
         {/* Header Summary */}
-        <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-5 space-y-4">
+        <div className="rounded-md border border-border bg-card p-5 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
@@ -113,10 +114,13 @@ export default function DeploymentDetailPage() {
                 >
                   {deployment.status}
                 </Badge>
-                <span className="font-mono text-xs text-slate-400">{deployment.id}</span>
+                <div className="flex items-center gap-1">
+                  <span className="font-mono text-xs text-foreground-muted">{deployment.id}</span>
+                  <CopyButton text={deployment.id} />
+                </div>
               </div>
-              <h1 className="text-xl font-bold text-white font-mono">{deployment.version}</h1>
-              <p className="text-xs text-slate-300 max-w-2xl">{deployment.releaseNotes || 'No release notes.'}</p>
+              <h1 className="text-xl font-semibold text-foreground font-mono">{deployment.version}</h1>
+              <p className="text-xs text-foreground-secondary max-w-2xl">{deployment.releaseNotes || 'No release notes.'}</p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -124,7 +128,7 @@ export default function DeploymentDetailPage() {
                 <Button
                   size="sm"
                   onClick={() => handleStatusUpdate('SUCCESSFUL')}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-xs text-white"
+                  className="text-xs"
                 >
                   Mark as Successful
                 </Button>
@@ -134,31 +138,34 @@ export default function DeploymentDetailPage() {
                   size="sm"
                   variant="outline"
                   onClick={() => handleStatusUpdate('ROLLED_BACK')}
-                  className="text-xs text-purple-300 border-purple-500/30 hover:bg-purple-950/20"
+                  className="text-xs gap-1"
                 >
-                  <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                  <RotateCcw className="h-3.5 w-3.5" />
                   Trigger Rollback
                 </Button>
               )}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 border-t border-slate-800/80 pt-4 text-xs font-mono">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 border-t border-border pt-4 text-xs font-mono tabular-nums">
             <div>
-              <div className="text-[10px] uppercase text-slate-500 font-sans">Commit SHA</div>
-              <div className="text-slate-200 mt-0.5">{deployment.commitSha?.substring(0, 7)}</div>
+              <div className="text-[10px] uppercase text-foreground-muted font-sans font-medium">Commit SHA</div>
+              <div className="text-foreground mt-0.5 flex items-center gap-1.5">
+                <span>{deployment.commitSha?.substring(0, 7)}</span>
+                <CopyButton text={deployment.commitSha} />
+              </div>
             </div>
             <div>
-              <div className="text-[10px] uppercase text-slate-500 font-sans">Branch</div>
-              <div className="text-slate-200 mt-0.5">{deployment.branch}</div>
+              <div className="text-[10px] uppercase text-foreground-muted font-sans font-medium">Branch</div>
+              <div className="text-foreground mt-0.5">{deployment.branch}</div>
             </div>
             <div>
-              <div className="text-[10px] uppercase text-slate-500 font-sans">Deploy Initiated</div>
-              <div className="text-slate-200 mt-0.5">{formatDate(deployment.occurredAt)}</div>
+              <div className="text-[10px] uppercase text-foreground-muted font-sans font-medium">Deploy Initiated</div>
+              <div className="text-foreground mt-0.5">{formatDate(deployment.occurredAt)}</div>
             </div>
             <div>
-              <div className="text-[10px] uppercase text-slate-500 font-sans">Deploy Completed</div>
-              <div className="text-slate-200 mt-0.5">{deployment.completedAt ? formatDate(deployment.completedAt) : 'In progress'}</div>
+              <div className="text-[10px] uppercase text-foreground-muted font-sans font-medium">Deploy Completed</div>
+              <div className="text-foreground mt-0.5">{deployment.completedAt ? formatDate(deployment.completedAt) : 'In progress'}</div>
             </div>
           </div>
         </div>
@@ -166,10 +173,10 @@ export default function DeploymentDetailPage() {
         {/* 2-Col Grid: Status Transition History & Linked Incidents */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Status Transition History (Audit Trail) */}
-          <Card className="border-slate-800 bg-slate-900/60">
+          <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-                <Clock className="h-4 w-4 text-cyan-400" />
+              <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Clock className="h-4 w-4 text-accent" />
                 <span>Lifecycle Status History (Audit Trail)</span>
               </CardTitle>
               <CardDescription>
@@ -177,21 +184,21 @@ export default function DeploymentDetailPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-800">
+              <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-border">
                 {deployment.statusHistory?.map((hist: any) => (
                   <div key={hist.id} className="relative">
-                    <div className="absolute -left-6 top-1 h-3 w-3 rounded-full border border-slate-600 bg-slate-900" />
-                    <div className="rounded border border-slate-800 bg-slate-950/60 p-2.5 text-xs space-y-1">
+                    <div className="absolute -left-6 top-1 h-3 w-3 rounded-full border border-border bg-card" />
+                    <div className="rounded border border-border bg-surface p-2.5 text-xs space-y-1">
                       <div className="flex items-center justify-between">
-                        <span className="font-semibold text-white">
+                        <span className="font-medium text-foreground">
                           {hist.fromStatus ? `${hist.fromStatus} → ${hist.toStatus}` : hist.toStatus}
                         </span>
-                        <span className="font-mono text-[10px] text-slate-400">
+                        <span className="font-mono tabular-nums text-[10px] text-foreground-muted">
                           {formatDate(hist.changedAt)}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-300">{hist.note}</p>
-                      <div className="text-[10px] text-slate-500">
+                      <p className="text-[11px] text-foreground-secondary">{hist.note}</p>
+                      <div className="text-[10px] text-foreground-muted">
                         Triggered by {hist.changedBy?.name || 'Automation Pipeline'}
                       </div>
                     </div>
@@ -202,10 +209,10 @@ export default function DeploymentDetailPage() {
           </Card>
 
           {/* Linked Failure Incidents */}
-          <Card className="border-slate-800 bg-slate-900/60">
+          <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-                <AlertOctagon className="h-4 w-4 text-red-400" />
+              <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <AlertOctagon className="h-4 w-4 text-status-error" />
                 <span>Associated Incidents ({deployment.incidentLinks?.length || 0})</span>
               </CardTitle>
               <CardDescription>
@@ -214,7 +221,7 @@ export default function DeploymentDetailPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               {deployment.incidentLinks?.length === 0 ? (
-                <div className="rounded border border-dashed border-slate-800 p-6 text-center text-xs text-slate-500">
+                <div className="rounded border border-dashed border-border p-6 text-center text-xs text-foreground-muted">
                   No incidents currently linked to this deployment.
                 </div>
               ) : (
@@ -222,10 +229,10 @@ export default function DeploymentDetailPage() {
                   <Link
                     key={link.id}
                     href={`/projects/${projectId}/incidents/${link.incidentId}`}
-                    className="block rounded border border-slate-800 bg-slate-950/60 p-3 hover:border-slate-700 transition-colors"
+                    className="block rounded border border-border bg-surface p-3 hover:border-border-hover transition-colors"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-white text-xs">
+                      <span className="font-medium text-foreground text-xs">
                         {link.incident?.title}
                       </span>
                       <Badge variant={link.incident?.severity?.toLowerCase()} className="text-[10px]">
@@ -233,10 +240,10 @@ export default function DeploymentDetailPage() {
                       </Badge>
                     </div>
                     {link.note && (
-                      <p className="mt-1 text-[11px] text-slate-300 italic">"{link.note}"</p>
+                      <p className="mt-1 text-[11px] text-foreground-secondary italic">"{link.note}"</p>
                     )}
-                    <div className="mt-2 text-[10px] text-slate-500">
-                      Correlation Confidence: <span className="text-indigo-400 uppercase font-semibold">{link.confidence}</span>
+                    <div className="mt-2 text-[10px] text-foreground-muted">
+                      Correlation Confidence: <span className="text-accent uppercase font-semibold">{link.confidence}</span>
                     </div>
                   </Link>
                 ))

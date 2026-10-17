@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { Radio, AlertCircle } from 'lucide-react';
 
 export default function RegisterPage() {
@@ -35,78 +36,83 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 p-4 selection:bg-indigo-500/20">
-      <div className="w-full max-w-md space-y-6">
-        <div className="text-center space-y-2">
-          <Link href="/" className="inline-flex items-center gap-2 font-bold text-white tracking-tight">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-indigo-600 shadow-md shadow-indigo-500/20">
-              <Radio className="h-5 w-5 text-white" />
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background-secondary p-4 relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle variant="dropdown" />
+      </div>
+
+      <div className="w-full max-w-sm space-y-4">
+        <div className="text-center space-y-1.5">
+          <Link href="/" className="inline-flex items-center gap-2 font-bold text-foreground tracking-tight">
+            <div className="flex h-7 w-7 items-center justify-center rounded-[5px] bg-primary text-primary-foreground font-mono text-xs font-bold">
+              <Radio className="h-4 w-4" />
             </div>
-            <span className="text-xl font-mono">VestiNex</span>
+            <span className="text-lg font-mono font-semibold">VestiNex</span>
           </Link>
-          <p className="text-xs text-slate-400">Incident Intelligence & Deployment Monitoring</p>
+          <p className="text-xs text-foreground-secondary">Incident Intelligence & Deployment Monitoring</p>
         </div>
 
-        <Card className="border-slate-800 bg-slate-900/70 shadow-2xl backdrop-blur-md">
-          <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-lg font-bold text-white">Create Account</CardTitle>
-            <CardDescription className="text-xs">
+        <Card className="border border-border bg-card shadow-sm">
+          <CardHeader className="space-y-1 pb-3">
+            <CardTitle className="text-base font-semibold text-foreground">Create Account</CardTitle>
+            <CardDescription className="text-xs text-foreground-secondary">
               Set up your engineer profile to join failure investigation teams.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3.5">
             {error && (
-              <div className="rounded-md border border-red-500/30 bg-red-950/30 p-2.5 text-xs text-red-300 flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+              <div className="rounded-[5px] border border-status-error-border bg-status-error-bg p-2.5 text-xs text-status-error flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-status-error" />
                 <span>{error}</span>
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-3">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300">Full Name</label>
+                <label className="text-xs font-medium text-foreground">Full Name</label>
                 <Input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Morgan Reed"
                   required
-                  className="bg-slate-950 text-xs"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300">Engineering Email</label>
+                <label className="text-xs font-medium text-foreground">Engineering Email</label>
                 <Input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="m.reed@vestinex.io"
                   required
-                  className="bg-slate-950 text-xs"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300">Password</label>
+                <label className="text-xs font-medium text-foreground">Password</label>
                 <Input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="At least 6 characters"
                   required
-                  className="bg-slate-950 text-xs"
                 />
               </div>
 
-              <Button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-500 text-xs font-medium h-9">
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full h-8 text-xs font-medium mt-1"
+              >
                 {loading ? 'Creating Account...' : 'Complete Registration'}
               </Button>
             </form>
 
-            <div className="text-center pt-2 text-xs text-slate-400">
+            <div className="text-center pt-1 text-xs text-foreground-secondary">
               Already registered?{' '}
-              <Link href="/login" className="text-indigo-400 hover:underline">
+              <Link href="/login" className="text-primary hover:underline font-medium">
                 Sign In
               </Link>
             </div>

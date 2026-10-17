@@ -15,12 +15,11 @@ import {
   Rocket,
   AlertOctagon,
   Users,
-  ExternalLink,
   GitBranch,
 } from 'lucide-react';
 
 export default function ProjectsPage() {
-  const { user, refreshProjects } = useAuth();
+  const { user } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -52,15 +51,17 @@ export default function ProjectsPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
           <div>
-            <h1 className="text-xl font-bold text-white tracking-tight">Software Projects</h1>
-            <p className="text-xs text-slate-400">
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
+              Software Projects
+            </h1>
+            <p className="text-xs text-foreground-secondary mt-0.5">
               Repositories and services configured for incident correlation and deployment tracking.
             </p>
           </div>
           <Link href="/projects/new">
-            <Button size="sm" className="bg-indigo-600 hover:bg-indigo-500 text-xs gap-1.5">
+            <Button size="sm" className="text-xs gap-1.5 font-medium">
               <Plus className="h-3.5 w-3.5" />
               <span>Create Project</span>
             </Button>
@@ -68,71 +69,73 @@ export default function ProjectsPage() {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-44 rounded-lg" />
+              <Skeleton key={i} className="h-40 rounded-lg" />
             ))}
           </div>
         ) : projects.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-slate-800 p-12 text-center space-y-3">
-            <Layers className="h-8 w-8 text-slate-600 mx-auto" />
-            <h3 className="text-sm font-semibold text-slate-300">No Projects Configured</h3>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+          <div className="rounded-lg border border-dashed border-border bg-card p-10 text-center space-y-3 max-w-md mx-auto my-6">
+            <div className="flex h-10 w-10 items-center justify-center rounded-[6px] bg-surface text-foreground-muted mx-auto border border-border">
+              <Layers className="h-5 w-5" />
+            </div>
+            <h3 className="text-sm font-semibold text-foreground">No Projects Configured</h3>
+            <p className="text-xs text-foreground-secondary leading-relaxed">
               Create your first project to start tracking production deployments and correlated incident investigations.
             </p>
-            <Link href="/projects/new">
-              <Button size="sm" className="bg-indigo-600">Create Project</Button>
-            </Link>
+            <div className="pt-1">
+              <Link href="/projects/new">
+                <Button size="sm" className="text-xs font-medium">Create Project</Button>
+              </Link>
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {projects.map((p) => (
-              <Link key={p.id} href={`/projects/${p.id}`} className="group block">
-                <Card className="h-full border-slate-800 bg-slate-900/50 hover:border-slate-700 hover:bg-slate-900/80 transition-all flex flex-col justify-between">
-                  <CardContent className="p-5 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-white text-sm group-hover:text-indigo-300 transition-colors">
+              <Link key={p.id} href={`/projects/${p.id}`} className="group block h-full">
+                <Card className="h-full border border-border bg-card hover:border-foreground-muted transition-colors flex flex-col justify-between">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-semibold text-foreground text-xs group-hover:text-primary transition-colors truncate">
                         {p.name}
                       </span>
                       <Badge
                         variant={
                           p.environment === 'PRODUCTION'
-                            ? 'destructive'
+                            ? 'critical'
                             : p.environment === 'STAGING'
-                            ? 'medium'
+                            ? 'high'
                             : 'outline'
                         }
-                        className="text-[10px]"
+                        className="text-[9px] uppercase font-mono px-1.5 py-0 shrink-0"
                       >
                         {p.environment}
                       </Badge>
                     </div>
 
-                    <p className="text-xs text-slate-400 line-clamp-2">
+                    <p className="text-xs text-foreground-secondary line-clamp-2 leading-relaxed">
                       {p.description || 'No description provided.'}
                     </p>
 
                     {p.repoUrl && (
-                      <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-500 truncate">
+                      <div className="flex items-center gap-1.5 text-[10px] text-foreground-muted font-mono truncate">
                         <GitBranch className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{p.repoUrl}</span>
+                        <span className="truncate">{p.repoUrl.replace(/^https:\/\/github\.com\//, '')}</span>
                       </div>
                     )}
 
-                    <div className="pt-3 border-t border-slate-800/80 grid grid-cols-3 gap-2 text-center text-xs">
-                      <div className="rounded bg-slate-950/60 p-1.5">
-                        <div className="text-[10px] text-slate-500 uppercase font-mono">Members</div>
-                        <div className="text-slate-200 font-bold">{p.memberCount || 1}</div>
+                    <div className="flex items-center justify-between text-[11px] text-foreground-muted pt-2.5 border-t border-border font-mono">
+                      <div className="flex items-center gap-1">
+                        <AlertOctagon className="h-3 w-3 text-status-error" />
+                        <span>{p.incidentCount || 0} incidents</span>
                       </div>
-                      <div className="rounded bg-slate-950/60 p-1.5">
-                        <div className="text-[10px] text-slate-500 uppercase font-mono">Deploys</div>
-                        <div className="text-cyan-400 font-bold">{p.deploymentCount || 0}</div>
+                      <div className="flex items-center gap-1">
+                        <Rocket className="h-3 w-3 text-primary" />
+                        <span>{p.deploymentCount || 0} deploys</span>
                       </div>
-                      <div className="rounded bg-slate-950/60 p-1.5">
-                        <div className="text-[10px] text-slate-500 uppercase font-mono">Incidents</div>
-                        <div className={`font-bold ${p.incidentCount > 0 ? 'text-red-400' : 'text-slate-400'}`}>
-                          {p.incidentCount || 0}
-                        </div>
+                      <div className="flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        <span>{p.memberCount || 1}</span>
                       </div>
                     </div>
                   </CardContent>

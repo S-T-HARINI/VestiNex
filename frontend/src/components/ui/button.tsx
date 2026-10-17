@@ -3,27 +3,29 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500 disabled:pointer-events-none disabled:opacity-50 select-none",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-[6px] text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer",
   {
     variants: {
       variant: {
         default:
-          "bg-indigo-600 text-white shadow hover:bg-indigo-500 active:bg-indigo-700",
-        destructive:
-          "bg-red-600/20 text-red-400 border border-red-500/30 hover:bg-red-600/30 active:bg-red-600/40",
-        outline:
-          "border border-slate-700 bg-slate-900/60 text-slate-200 hover:bg-slate-800 hover:text-white",
+          "bg-primary text-primary-foreground hover:opacity-90 active:opacity-100 shadow-sm",
         secondary:
-          "bg-slate-800 text-slate-200 border border-slate-700/60 hover:bg-slate-700 hover:text-white",
+          "bg-surface text-foreground border border-border hover:bg-background-secondary active:bg-surface",
+        outline:
+          "border border-border bg-transparent text-foreground hover:bg-surface active:bg-background-secondary",
         ghost:
-          "text-slate-300 hover:bg-slate-800/80 hover:text-white",
-        link: "text-indigo-400 underline-offset-4 hover:underline",
+          "text-foreground-secondary hover:text-foreground hover:bg-surface active:bg-background-secondary",
+        destructive:
+          "bg-status-error-bg text-status-error border border-status-error-border hover:opacity-90 active:opacity-100",
+        link:
+          "text-primary underline-offset-4 hover:underline p-0 h-auto font-normal",
       },
       size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-8 rounded px-3 text-xs",
-        lg: "h-10 rounded-md px-6 text-base",
-        icon: "h-9 w-9",
+        default: "h-8 px-3 py-1.5",
+        sm: "h-7 px-2.5 text-[11px]",
+        lg: "h-9 px-4 text-sm",
+        icon: "h-8 w-8",
+        iconSm: "h-7 w-7",
       },
     },
     defaultVariants: {

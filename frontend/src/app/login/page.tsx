@@ -7,8 +7,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Radio, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { Radio, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -51,120 +51,108 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 p-4 selection:bg-indigo-500/20">
-      <div className="w-full max-w-md space-y-6">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background-secondary p-4 relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle variant="dropdown" />
+      </div>
+
+      <div className="w-full max-w-sm space-y-4">
         {/* Brand header */}
-        <div className="text-center space-y-2">
-          <Link href="/" className="inline-flex items-center gap-2 font-bold text-white tracking-tight">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-indigo-600 shadow-md shadow-indigo-500/20">
-              <Radio className="h-5 w-5 text-white" />
+        <div className="text-center space-y-1.5">
+          <Link href="/" className="inline-flex items-center gap-2 font-bold text-foreground tracking-tight">
+            <div className="flex h-7 w-7 items-center justify-center rounded-[5px] bg-primary text-primary-foreground font-mono text-xs font-bold">
+              <Radio className="h-4 w-4" />
             </div>
-            <span className="text-xl font-mono">VestiNex</span>
+            <span className="text-lg font-mono font-semibold">VestiNex</span>
           </Link>
-          <p className="text-xs text-slate-400">Incident Intelligence & Deployment Monitoring</p>
+          <p className="text-xs text-foreground-secondary">Incident Intelligence & Deployment Monitoring</p>
         </div>
 
         {/* Login Card */}
-        <Card className="border-slate-800 bg-slate-900/70 shadow-2xl backdrop-blur-md">
-          <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-lg font-bold text-white">Sign In</CardTitle>
-            <CardDescription className="text-xs">
+        <Card className="border border-border bg-card shadow-sm">
+          <CardHeader className="space-y-1 pb-3">
+            <CardTitle className="text-base font-semibold text-foreground">Sign In</CardTitle>
+            <CardDescription className="text-xs text-foreground-secondary">
               Access the failure investigation workspace and telemetry streams.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3.5">
             {error && (
-              <div className="rounded-md border border-red-500/30 bg-red-950/30 p-2.5 text-xs text-red-300 flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+              <div className="rounded-[5px] border border-status-error-border bg-status-error-bg p-2.5 text-xs text-status-error flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-status-error" />
                 <span>{error}</span>
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-3">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300">Email Address</label>
+                <label className="text-xs font-medium text-foreground">Email Address</label>
                 <Input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="engineer@vestinex.io"
                   required
-                  className="bg-slate-950 text-xs"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300">Password</label>
+                <label className="text-xs font-medium text-foreground">Password</label>
                 <Input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="bg-slate-950 text-xs"
                 />
               </div>
 
-              <Button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-500 text-xs font-medium h-9">
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full h-8 text-xs font-medium mt-1"
+              >
                 {loading ? 'Authenticating...' : 'Sign In to Workspace'}
               </Button>
             </form>
 
             {process.env.NODE_ENV !== 'production' && (
               <>
-                <div className="relative my-4">
+                <div className="relative my-3">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-slate-800" />
+                    <div className="w-full border-t border-border" />
                   </div>
                   <div className="relative flex justify-center text-[10px] uppercase font-mono tracking-wider">
-                    <span className="bg-slate-900 px-2 text-slate-500">Fast Demo Access (Dev Only)</span>
+                    <span className="bg-card px-2 text-foreground-muted">Fast Demo Access</span>
                   </div>
                 </div>
 
                 {/* Quick Demo Access Buttons */}
-                <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="grid grid-cols-2 gap-1.5 text-xs">
                   <button
                     type="button"
                     onClick={() => handleQuickLogin('admin@vestinex.io')}
-                    className="flex flex-col items-start rounded border border-slate-800 bg-slate-950/70 p-2 text-left hover:border-indigo-500/50 hover:bg-slate-900 transition-colors"
+                    className="flex flex-col items-start rounded border border-border bg-surface/50 p-2 text-left hover:bg-surface hover:border-foreground-muted transition-colors cursor-pointer"
                   >
-                    <span className="font-semibold text-slate-200 text-[11px]">Platform Lead</span>
-                    <span className="text-[10px] text-indigo-400 font-mono">admin@vestinex.io</span>
+                    <span className="font-medium text-foreground text-[11px]">Platform Lead</span>
+                    <span className="text-[10px] text-primary font-mono truncate max-w-full">admin@vestinex.io</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleQuickLogin('dev@vestinex.io')}
-                    className="flex flex-col items-start rounded border border-slate-800 bg-slate-950/70 p-2 text-left hover:border-indigo-500/50 hover:bg-slate-900 transition-colors"
+                    className="flex flex-col items-start rounded border border-border bg-surface/50 p-2 text-left hover:bg-surface hover:border-foreground-muted transition-colors cursor-pointer"
                   >
-                    <span className="font-semibold text-slate-200 text-[11px]">Staff SRE</span>
-                    <span className="text-[10px] text-cyan-400 font-mono">dev@vestinex.io</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleQuickLogin('lead@vestinex.io')}
-                    className="flex flex-col items-start rounded border border-slate-800 bg-slate-950/70 p-2 text-left hover:border-indigo-500/50 hover:bg-slate-900 transition-colors"
-                  >
-                    <span className="font-semibold text-slate-200 text-[11px]">Backend Architect</span>
-                    <span className="text-[10px] text-emerald-400 font-mono">lead@vestinex.io</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleQuickLogin('viewer@vestinex.io')}
-                    className="flex flex-col items-start rounded border border-slate-800 bg-slate-950/70 p-2 text-left hover:border-indigo-500/50 hover:bg-slate-900 transition-colors"
-                  >
-                    <span className="font-semibold text-slate-200 text-[11px]">Observer (Read-Only)</span>
-                    <span className="text-[10px] text-slate-400 font-mono">viewer@vestinex.io</span>
+                    <span className="font-medium text-foreground text-[11px]">Staff SRE</span>
+                    <span className="text-[10px] text-foreground-secondary font-mono truncate max-w-full">dev@vestinex.io</span>
                   </button>
                 </div>
               </>
             )}
 
-            <div className="text-center pt-2 text-xs text-slate-400">
+            <div className="text-center pt-1 text-xs text-foreground-secondary">
               Need a new account?{' '}
-              <Link href="/register" className="text-indigo-400 hover:underline">
+              <Link href="/register" className="text-primary hover:underline font-medium">
                 Create Account
               </Link>
             </div>

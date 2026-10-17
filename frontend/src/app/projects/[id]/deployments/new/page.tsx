@@ -59,16 +59,16 @@ export default function NewDeploymentPage() {
       <div className="max-w-2xl mx-auto space-y-6">
         <Link
           href={`/projects/${projectId}/deployments`}
-          className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200"
+          className="inline-flex items-center gap-1.5 text-xs text-foreground-secondary hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           <span>Back to Deployments</span>
         </Link>
 
-        <Card className="border-slate-800 bg-slate-900/60">
+        <Card>
           <CardHeader className="pb-4">
-            <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
-              <Rocket className="h-5 w-5 text-cyan-400" />
+            <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <Rocket className="h-5 w-5 text-accent" />
               <span>Record New Deployment</span>
             </CardTitle>
             <CardDescription className="text-xs">
@@ -77,8 +77,8 @@ export default function NewDeploymentPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {error && (
-              <div className="rounded-md border border-red-500/30 bg-red-950/30 p-2.5 text-xs text-red-300 flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+              <div className="rounded-md border border-status-error/30 bg-status-error/10 p-2.5 text-xs text-status-error flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-status-error" />
                 <span>{error}</span>
               </div>
             )}
@@ -86,22 +86,22 @@ export default function NewDeploymentPage() {
             <form onSubmit={handleSubmit} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300">Version Tag *</label>
+                  <label className="font-medium text-foreground">Version Tag *</label>
                   <Input
                     value={version}
                     onChange={(e) => setVersion(e.target.value)}
                     placeholder="e.g. v2.5.0 or 2025.02.14-prod"
                     required
-                    className="bg-slate-950 text-xs font-mono"
+                    className="text-xs font-mono"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300">Target Environment</label>
+                  <label className="font-medium text-foreground">Target Environment</label>
                   <select
                     value={environment}
                     onChange={(e: any) => setEnvironment(e.target.value)}
-                    className="w-full rounded-md border border-slate-700 bg-slate-950 p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                    className="w-full rounded-md border border-border bg-background p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
                   >
                     <option value="PRODUCTION">PRODUCTION</option>
                     <option value="STAGING">STAGING</option>
@@ -112,35 +112,35 @@ export default function NewDeploymentPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300">Git Commit SHA *</label>
+                  <label className="font-medium text-foreground">Git Commit SHA *</label>
                   <Input
                     value={commitSha}
                     onChange={(e) => setCommitSha(e.target.value)}
                     placeholder="e.g. 7c9a12b or full 40-char SHA"
                     required
-                    className="bg-slate-950 text-xs font-mono"
+                    className="text-xs font-mono"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300">Branch Name</label>
+                  <label className="font-medium text-foreground">Branch Name</label>
                   <Input
                     value={branch}
                     onChange={(e) => setBranch(e.target.value)}
                     placeholder="main or release/v2.5"
                     required
-                    className="bg-slate-950 text-xs font-mono"
+                    className="text-xs font-mono"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300">Initial Deployment Status</label>
+                  <label className="font-medium text-foreground">Initial Deployment Status</label>
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value)}
-                    className="w-full rounded-md border border-slate-700 bg-slate-950 p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                    className="w-full rounded-md border border-border bg-background p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
                   >
                     <option value="SUCCESSFUL">SUCCESSFUL</option>
                     <option value="RUNNING">RUNNING (In-progress rollout)</option>
@@ -150,24 +150,24 @@ export default function NewDeploymentPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300">CI/CD Build URL</label>
+                  <label className="font-medium text-foreground">CI/CD Build URL</label>
                   <Input
                     value={buildUrl}
                     onChange={(e) => setBuildUrl(e.target.value)}
                     placeholder="https://ci.vestinex.io/builds/9042"
                     type="url"
-                    className="bg-slate-950 text-xs"
+                    className="text-xs"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="font-semibold text-slate-300">Release Notes / Changelog Summary</label>
+                <label className="font-medium text-foreground">Release Notes / Changelog Summary</label>
                 <textarea
                   value={releaseNotes}
                   onChange={(e) => setReleaseNotes(e.target.value)}
                   placeholder="Key features, database migrations applied, dependency updates, and configuration flags..."
-                  className="w-full rounded-md border border-slate-700 bg-slate-950 p-2 text-xs text-slate-200 h-24 focus:outline-none focus:border-indigo-500"
+                  className="w-full rounded-md border border-border bg-background p-2 text-xs text-foreground h-24 focus:outline-none focus:ring-1 focus:ring-accent"
                 />
               </div>
 
@@ -181,7 +181,7 @@ export default function NewDeploymentPage() {
                   type="submit"
                   disabled={loading || !version.trim() || !commitSha.trim()}
                   size="sm"
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs"
+                  className="text-xs"
                 >
                   {loading ? 'Recording...' : 'Register Deployment'}
                 </Button>

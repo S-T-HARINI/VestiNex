@@ -51,69 +51,70 @@ export default function NewProjectPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-2xl mx-auto space-y-6">
-        <Link href="/projects" className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200">
-          <ArrowLeft className="h-3.5 w-3.5" />
+      <div className="max-w-xl mx-auto space-y-4">
+        <Link href="/projects" className="inline-flex items-center gap-1.5 text-xs text-foreground-secondary hover:text-foreground transition-colors font-medium">
+          <ArrowLeft className="h-3 w-3" />
           <span>Back to Projects</span>
         </Link>
 
-        <Card className="border-slate-800 bg-slate-900/60">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg font-bold text-white">Create New Software Project</CardTitle>
-            <CardDescription className="text-xs">
+        <Card className="border border-border bg-card">
+          <CardHeader className="p-4 sm:p-5 pb-3">
+            <CardTitle className="text-base font-semibold text-foreground">Create New Software Project</CardTitle>
+            <CardDescription className="text-xs text-foreground-secondary">
               Establish a monitoring scope for tracking deployments, commits, and incident forensics.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="p-4 sm:p-5 pt-0 space-y-4">
             {error && (
-              <div className="rounded-md border border-red-500/30 bg-red-950/30 p-2.5 text-xs text-red-300 flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+              <div className="rounded-[5px] border border-status-error-border bg-status-error-bg p-2.5 text-xs text-status-error flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-status-error" />
                 <span>{error}</span>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+            <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
               <div className="space-y-1">
-                <label className="font-semibold text-slate-300">Project Name *</label>
+                <label className="font-medium text-foreground">Project Name *</label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Customer Portal API, Mobile Banking Backend, E-Commerce Storefront, SaaS Auth Service"
+                  placeholder="Customer Portal API"
                   required
-                  className="bg-slate-950 text-xs"
                 />
-                <p className="text-[11px] text-slate-500">
+                <p className="text-[11px] text-foreground-muted">
                   Name any software system, mobile app, API microservice, or backend pipeline.
                 </p>
               </div>
 
               <div className="space-y-1">
-                <label className="font-semibold text-slate-300">Description</label>
+                <label className="font-medium text-foreground">Description</label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Overview of this service scope, architecture, core dependencies, or mission-critical SLAs..."
-                  className="w-full rounded-md border border-slate-700 bg-slate-950 p-2 text-xs text-slate-200 h-24 focus:outline-none focus:border-indigo-500"
+                  className="w-full rounded-[6px] border border-border bg-background p-2.5 text-xs text-foreground h-20 placeholder:text-foreground-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="font-semibold text-slate-300">Repository URL</label>
+                <label className="font-medium text-foreground">Public GitHub Repository URL</label>
                 <Input
                   value={repoUrl}
                   onChange={(e) => setRepoUrl(e.target.value)}
-                  placeholder="https://github.com/your-org/your-repo.git"
+                  placeholder="https://github.com/expressjs/express.git"
                   type="url"
-                  className="bg-slate-950 text-xs"
                 />
+                <p className="text-[11px] text-foreground-muted">
+                  Connect public GitHub repositories to sync commit history and correlate releases with failures.
+                </p>
               </div>
 
               <div className="space-y-1">
-                <label className="font-semibold text-slate-300">Primary Monitored Environment</label>
+                <label className="font-medium text-foreground">Primary Monitored Environment</label>
                 <select
                   value={environment}
                   onChange={(e: any) => setEnvironment(e.target.value)}
-                  className="w-full rounded-md border border-slate-700 bg-slate-950 p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                  className="w-full rounded-[6px] border border-border bg-background p-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors cursor-pointer"
                 >
                   <option value="PRODUCTION">PRODUCTION (Live customer traffic)</option>
                   <option value="STAGING">STAGING (Pre-release testing tier)</option>
@@ -121,14 +122,14 @@ export default function NewProjectPage() {
                 </select>
               </div>
 
-              <div className="pt-2 flex justify-end gap-2">
+              <div className="pt-2 flex justify-end gap-2 border-t border-border">
                 <Link href="/projects">
-                  <Button type="button" variant="ghost" size="sm" className="text-xs">
+                  <Button type="button" variant="outline" size="sm" className="text-xs">
                     Cancel
                   </Button>
                 </Link>
-                <Button type="submit" disabled={loading || !name.trim()} size="sm" className="bg-indigo-600 hover:bg-indigo-500 text-xs">
-                  {loading ? 'Creating...' : 'Initialize Project'}
+                <Button type="submit" disabled={loading || !name.trim()} size="sm" className="text-xs font-medium">
+                  {loading ? 'Initializing...' : 'Initialize Project'}
                 </Button>
               </div>
             </form>

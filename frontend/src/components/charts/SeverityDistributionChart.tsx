@@ -13,10 +13,10 @@ interface Props {
 }
 
 const SEVERITY_COLORS: Record<string, string> = {
-  CRITICAL: '#ef4444',
-  HIGH: '#f97316',
-  MEDIUM: '#f59e0b',
-  LOW: '#64748b',
+  CRITICAL: 'var(--error)',
+  HIGH: 'var(--warning)',
+  MEDIUM: 'var(--warning)',
+  LOW: 'var(--neutral)',
 };
 
 export function SeverityDistributionChart({ distribution }: Props) {
@@ -28,7 +28,7 @@ export function SeverityDistributionChart({ distribution }: Props) {
 
   if (total === 0) {
     return (
-      <div className="flex h-64 items-center justify-center text-xs text-slate-500">
+      <div className="flex h-56 items-center justify-center text-xs text-foreground-muted border border-dashed border-border rounded-md">
         No active or historic incidents reported.
       </div>
     );
@@ -42,21 +42,22 @@ export function SeverityDistributionChart({ distribution }: Props) {
   ];
 
   return (
-    <div className="h-64 w-full">
+    <div className="h-56 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} layout="vertical" margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
-          <XAxis type="number" stroke="#64748b" fontSize={11} tickLine={false} allowDecimals={false} />
-          <YAxis dataKey="name" type="category" stroke="#94a3b8" fontSize={11} tickLine={false} width={60} />
+        <BarChart data={data} layout="vertical" margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+          <XAxis type="number" stroke="var(--foreground-muted)" fontSize={11} tickLine={false} allowDecimals={false} />
+          <YAxis dataKey="name" type="category" stroke="var(--foreground-secondary)" fontSize={11} tickLine={false} width={60} />
           <Tooltip
             contentStyle={{
-              backgroundColor: '#0f172a',
-              borderColor: '#334155',
+              backgroundColor: 'var(--card)',
+              borderColor: 'var(--border)',
               borderRadius: '6px',
-              fontSize: '12px',
-              color: '#f8fafc',
+              fontSize: '11px',
+              color: 'var(--foreground)',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
             }}
           />
-          <Bar dataKey="count" name="Incidents" radius={[0, 4, 4, 0]} barSize={18}>
+          <Bar dataKey="count" name="Incidents" radius={[0, 3, 3, 0]} barSize={14}>
             {data.map((entry) => (
               <Cell key={`cell-${entry.key}`} fill={SEVERITY_COLORS[entry.key]} />
             ))}

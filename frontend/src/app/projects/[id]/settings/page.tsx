@@ -149,69 +149,69 @@ export default function ProjectSettingsPage() {
   return (
     <AppLayout>
       <div className="max-w-4xl space-y-8">
-        <div className="border-b border-slate-800/80 pb-4">
-          <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-            <Settings className="h-5 w-5 text-indigo-400" />
+        <div className="border-b border-border pb-4">
+          <h1 className="text-xl font-semibold text-foreground tracking-tight flex items-center gap-2">
+            <Settings className="h-5 w-5 text-accent" />
             <span>Project Settings & Governance</span>
           </h1>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-foreground-secondary">
             Configure project parameters, environment scopes, and team RBAC permissions.
           </p>
         </div>
 
         {/* General Settings */}
-        <Card className="border-slate-800 bg-slate-900/60">
+        <Card>
           <CardHeader className="pb-4">
-            <CardTitle className="text-sm font-semibold text-white">General Configuration</CardTitle>
+            <CardTitle className="text-sm font-semibold text-foreground">General Configuration</CardTitle>
             <CardDescription className="text-xs">
               Basic metadata and primary operational environment.
             </CardDescription>
           </CardHeader>
           <CardContent>
             {saveSuccess && (
-              <div className="mb-4 rounded-md border border-emerald-500/30 bg-emerald-950/30 p-2.5 text-xs text-emerald-400 flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
+              <div className="mb-4 rounded-md border border-status-success/30 bg-status-success/10 p-2.5 text-xs text-status-success flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-status-success" />
                 <span>Project configurations saved successfully.</span>
               </div>
             )}
 
             <form onSubmit={handleSaveProject} className="space-y-4 text-xs">
               <div className="space-y-1">
-                <label className="font-semibold text-slate-300">Project Name</label>
+                <label className="font-medium text-foreground">Project Name</label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="bg-slate-950 text-xs"
+                  className="text-xs"
                   required
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="font-semibold text-slate-300">Description</label>
+                <label className="font-medium text-foreground">Description</label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full rounded-md border border-slate-700 bg-slate-950 p-2 text-xs text-slate-200 h-20 focus:outline-none focus:border-indigo-500"
+                  className="w-full rounded-md border border-border bg-background p-2 text-xs text-foreground h-20 focus:outline-none focus:ring-1 focus:ring-accent"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300">Repository URL</label>
+                  <label className="font-medium text-foreground">Repository URL</label>
                   <Input
                     value={repoUrl}
                     onChange={(e) => setRepoUrl(e.target.value)}
-                    className="bg-slate-950 text-xs"
+                    className="text-xs"
                     type="url"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-300">Monitored Environment</label>
+                  <label className="font-medium text-foreground">Monitored Environment</label>
                   <select
                     value={environment}
                     onChange={(e: any) => setEnvironment(e.target.value)}
-                    className="w-full rounded-md border border-slate-700 bg-slate-950 p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                    className="w-full rounded-md border border-border bg-background p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
                   >
                     <option value="PRODUCTION">PRODUCTION</option>
                     <option value="STAGING">STAGING</option>
@@ -221,7 +221,7 @@ export default function ProjectSettingsPage() {
               </div>
 
               <div className="pt-2 flex justify-end">
-                <Button type="submit" size="sm" className="bg-indigo-600 hover:bg-indigo-500 text-xs">
+                <Button type="submit" size="sm" className="text-xs">
                   Save Changes
                 </Button>
               </div>
@@ -230,12 +230,12 @@ export default function ProjectSettingsPage() {
         </Card>
 
         {/* Team Members & RBAC */}
-        <Card className="border-slate-800 bg-slate-900/60">
+        <Card>
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-                  <Users className="h-4 w-4 text-indigo-400" />
+                <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Users className="h-4 w-4 text-accent" />
                   <span>Team Members & Role-Based Access</span>
                 </CardTitle>
                 <CardDescription className="text-xs">
@@ -249,14 +249,14 @@ export default function ProjectSettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Add Member Form */}
-            <form onSubmit={handleAddMember} className="rounded-lg border border-slate-800 bg-slate-950/60 p-3 space-y-2 text-xs">
-              <div className="font-semibold text-slate-300 flex items-center gap-1.5">
-                <UserPlus className="h-3.5 w-3.5 text-indigo-400" />
+            <form onSubmit={handleAddMember} className="rounded-md border border-border bg-surface p-3 space-y-2 text-xs">
+              <div className="font-medium text-foreground flex items-center gap-1.5">
+                <UserPlus className="h-3.5 w-3.5 text-accent" />
                 <span>Add Team Member</span>
               </div>
 
               {memberError && (
-                <div className="rounded border border-red-500/30 bg-red-950/20 p-2 text-[11px] text-red-400 flex items-center gap-1.5">
+                <div className="rounded border border-status-error/30 bg-status-error/10 p-2 text-[11px] text-status-error flex items-center gap-1.5">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                   <span>{memberError}</span>
                 </div>
@@ -269,20 +269,20 @@ export default function ProjectSettingsPage() {
                   onChange={(e) => setNewMemberEmail(e.target.value)}
                   placeholder="engineer@vestinex.io (must be registered user)"
                   required
-                  className="bg-slate-900 text-xs flex-1"
+                  className="text-xs flex-1"
                 />
 
                 <select
                   value={newMemberRole}
                   onChange={(e: any) => setNewMemberRole(e.target.value)}
-                  className="rounded border border-slate-700 bg-slate-900 px-3 py-1 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                  className="rounded border border-border bg-background px-3 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-accent"
                 >
                   <option value="ADMIN">ADMIN</option>
                   <option value="DEVELOPER">DEVELOPER</option>
                   <option value="VIEWER">VIEWER</option>
                 </select>
 
-                <Button type="submit" size="sm" disabled={addingMember || !newMemberEmail.trim()} className="bg-indigo-600 text-xs">
+                <Button type="submit" size="sm" disabled={addingMember || !newMemberEmail.trim()} className="text-xs">
                   {addingMember ? 'Adding...' : 'Add Member'}
                 </Button>
               </div>
@@ -293,19 +293,19 @@ export default function ProjectSettingsPage() {
               {members.map((m) => (
                 <div
                   key={m.id}
-                  className="flex items-center justify-between rounded-lg border border-slate-800/80 bg-slate-950/40 p-3 text-xs"
+                  className="flex items-center justify-between rounded-md border border-border bg-surface/50 p-3 text-xs"
                 >
                   <div className="flex items-center gap-2.5">
                     {m.user?.avatarUrl ? (
                       <img src={m.user.avatarUrl} alt="" className="h-7 w-7 rounded-full object-cover" />
                     ) : (
-                      <div className="h-7 w-7 rounded-full bg-slate-800 text-[10px] font-bold flex items-center justify-center text-slate-300">
+                      <div className="h-7 w-7 rounded-full bg-border text-[10px] font-bold flex items-center justify-center text-foreground">
                         {m.user?.name?.substring(0, 2).toUpperCase() || 'EM'}
                       </div>
                     )}
                     <div>
-                      <div className="font-semibold text-white">{m.user?.name || 'Unknown User'}</div>
-                      <div className="text-[11px] text-slate-400 font-mono">{m.user?.email}</div>
+                      <div className="font-medium text-foreground">{m.user?.name || 'Unknown User'}</div>
+                      <div className="text-[11px] text-foreground-secondary font-mono">{m.user?.email}</div>
                     </div>
                   </div>
 
@@ -316,7 +316,7 @@ export default function ProjectSettingsPage() {
                       <select
                         value={m.role}
                         onChange={(e) => handleRoleChange(m.userId, e.target.value)}
-                        className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-200"
+                        className="rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
                       >
                         <option value="ADMIN">ADMIN</option>
                         <option value="DEVELOPER">DEVELOPER</option>
@@ -329,7 +329,7 @@ export default function ProjectSettingsPage() {
                         size="sm"
                         variant="ghost"
                         onClick={() => handleRemoveMember(m.userId)}
-                        className="h-7 w-7 p-0 text-slate-400 hover:text-red-400"
+                        className="h-7 w-7 p-0 text-foreground-muted hover:text-status-error"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -342,20 +342,20 @@ export default function ProjectSettingsPage() {
         </Card>
 
         {/* Danger Zone */}
-        <Card className="border-red-900/40 bg-red-950/10">
+        <Card className="border-status-error/30 bg-status-error/5">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold text-red-400 flex items-center gap-2">
+            <CardTitle className="text-sm font-semibold text-status-error flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
               <span>Danger Zone</span>
             </CardTitle>
-            <CardDescription className="text-xs text-slate-400">
+            <CardDescription className="text-xs text-foreground-secondary">
               Irreversible actions for this project scope.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex items-center justify-between">
-            <div className="text-xs text-slate-300">
+            <div className="text-xs text-foreground">
               <div className="font-semibold">Archive Project</div>
-              <div className="text-[11px] text-slate-400">
+              <div className="text-[11px] text-foreground-secondary">
                 Freeze all deployment monitoring and hide project from active dashboards.
               </div>
             </div>
@@ -363,7 +363,7 @@ export default function ProjectSettingsPage() {
               size="sm"
               variant="destructive"
               onClick={handleArchive}
-              className="text-xs bg-red-600/30 text-red-300 border border-red-500/40 hover:bg-red-600/50"
+              className="text-xs"
             >
               Archive Project
             </Button>

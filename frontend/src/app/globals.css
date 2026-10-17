@@ -4,35 +4,131 @@
 
 @layer base {
   :root {
-    --background: 222 47% 7%; /* Midnight navy */
-    --foreground: 210 40% 98%;
+    --background: #FFFFFF;
+    --background-secondary: #F8F9FB;
+    --surface: #F1F3F5;
+    --border: #E5E7EB;
+    --border-subtle: #F1F3F5;
+    --foreground: #111318;
+    --foreground-secondary: #626A73;
+    --foreground-muted: #8A919B;
 
-    --card: 222 35% 11%;
-    --card-foreground: 210 40% 98%;
+    --primary: #2563EB;
+    --primary-hover: #1D4ED8;
+    --primary-foreground: #FFFFFF;
 
-    --popover: 222 40% 10%;
-    --popover-foreground: 210 40% 98%;
+    --card: #FFFFFF;
+    --card-foreground: #111318;
 
-    --primary: 239 84% 67%; /* Electric Indigo */
-    --primary-foreground: 0 0% 100%;
+    --popover: #FFFFFF;
+    --popover-foreground: #111318;
 
-    --secondary: 217 28% 18%;
-    --secondary-foreground: 210 40% 96%;
+    --secondary: #F8F9FB;
+    --secondary-foreground: #626A73;
 
-    --muted: 217 25% 15%;
-    --muted-foreground: 215 20% 65%;
+    --muted: #F1F3F5;
+    --muted-foreground: #8A919B;
 
-    --accent: 239 84% 67%;
-    --accent-foreground: 210 40% 98%;
+    --accent: #2563EB;
+    --accent-foreground: #FFFFFF;
 
-    --destructive: 0 84% 60%; /* Red */
-    --destructive-foreground: 210 40% 98%;
+    --input: #E5E7EB;
+    --ring: #2563EB;
 
-    --border: 217 28% 18%;
-    --input: 217 28% 18%;
-    --ring: 239 84% 67%;
+    --destructive: #DC2626;
+    --destructive-foreground: #FFFFFF;
 
-    --radius: 0.5rem;
+    /* Semantic Status Tokens */
+    --success: #16A34A;
+    --success-bg: #F0FDF4;
+    --success-border: #DCFCE7;
+    --success-text: #15803D;
+
+    --warning: #D97706;
+    --warning-bg: #FFFBEB;
+    --warning-border: #FEF3C7;
+    --warning-text: #B45309;
+
+    --error: #DC2626;
+    --error-bg: #FEF2F2;
+    --error-border: #FEE2E2;
+    --error-text: #B91C1C;
+
+    --info: #2563EB;
+    --info-bg: #EFF6FF;
+    --info-border: #DBEAFE;
+    --info-text: #1D4ED8;
+
+    --neutral: #4B5563;
+    --neutral-bg: #F3F4F6;
+    --neutral-border: #E5E7EB;
+    --neutral-text: #374151;
+
+    --radius: 8px;
+  }
+
+  .dark {
+    --background: #0D0F12;
+    --background-secondary: #14171B;
+    --surface: #1B1F24;
+    --border: #292E35;
+    --border-subtle: #1F242B;
+    --foreground: #F3F4F6;
+    --foreground-secondary: #A1A8B3;
+    --foreground-muted: #747C87;
+
+    --primary: #6B93FF;
+    --primary-hover: #85A8FF;
+    --primary-foreground: #0D0F12;
+
+    --card: #14171B;
+    --card-foreground: #F3F4F6;
+
+    --popover: #1B1F24;
+    --popover-foreground: #F3F4F6;
+
+    --secondary: #14171B;
+    --secondary-foreground: #A1A8B3;
+
+    --muted: #1B1F24;
+    --muted-foreground: #747C87;
+
+    --accent: #6B93FF;
+    --accent-foreground: #0D0F12;
+
+    --input: #292E35;
+    --ring: #6B93FF;
+
+    --destructive: #F87171;
+    --destructive-foreground: #0D0F12;
+
+    /* Semantic Status Tokens */
+    --success: #4ADE80;
+    --success-bg: #052E16;
+    --success-border: #166534;
+    --success-text: #86EFAC;
+
+    --warning: #FBBF24;
+    --warning-bg: #451A03;
+    --warning-border: #78350F;
+    --warning-text: #FDE047;
+
+    --error: #F87171;
+    --error-bg: #450A0A;
+    --error-border: #991B1B;
+    --error-text: #FCA5A5;
+
+    --info: #60A5FA;
+    --info-bg: #172554;
+    --info-border: #1E40AF;
+    --info-text: #93C5FD;
+
+    --neutral: #9CA3AF;
+    --neutral-bg: #1F2937;
+    --neutral-border: #374151;
+    --neutral-text: #D1D5DB;
+
+    --radius: 8px;
   }
 }
 
@@ -41,7 +137,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground antialiased selection:bg-indigo-500/20 selection:text-indigo-200;
+    @apply bg-background text-foreground antialiased transition-colors duration-150;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
   .tabular-nums {
@@ -49,18 +145,18 @@
   }
 }
 
-/* Custom engineering scrollbar */
+/* Restrained engineering scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0a0e17;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: var(--border);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: var(--foreground-muted);
 }

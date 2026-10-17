@@ -24,56 +24,52 @@ export function OperationalMetricsCard({ summary }: Props) {
         ? `${summary.criticalIncidents} Critical Severity`
         : 'No incidents recorded',
       icon: AlertOctagon,
-      color: summary.criticalIncidents > 0 ? 'text-red-400' : 'text-slate-200',
-      border: summary.criticalIncidents > 0 ? 'border-red-500/30' : 'border-slate-800',
-      bg: summary.criticalIncidents > 0 ? 'bg-red-950/20' : 'bg-slate-900/60',
+      valueColor: summary.criticalIncidents > 0 ? 'text-status-error' : 'text-foreground',
+      iconColor: summary.criticalIncidents > 0 ? 'text-status-error' : 'text-foreground-muted',
     },
     {
       label: 'Deploy Success Rate',
       value: summary.totalDeployments > 0 ? `${summary.deploymentSuccessRate}%` : '—',
       subValue: summary.totalDeployments > 0
-        ? `${summary.successfulDeployments} of ${summary.totalDeployments} Succeeded`
+        ? `${summary.successfulDeployments} of ${summary.totalDeployments} succeeded`
         : 'No deployments recorded',
       icon: CheckCircle2,
-      color: summary.totalDeployments > 0 ? 'text-emerald-400' : 'text-slate-400',
-      border: 'border-slate-800',
-      bg: 'bg-slate-900/60',
+      valueColor: summary.totalDeployments > 0 ? 'text-status-success' : 'text-foreground',
+      iconColor: summary.totalDeployments > 0 ? 'text-status-success' : 'text-foreground-muted',
     },
     {
       label: 'Mean Time to Resolution',
       value: summary.mttrMinutes > 0 ? `${summary.mttrMinutes}m` : '—',
-      subValue: summary.mttrMinutes > 0 ? 'Based on closed incident life-cycles' : 'No resolved incidents yet',
+      subValue: summary.mttrMinutes > 0 ? 'Based on resolved incidents' : 'No resolved incidents yet',
       icon: Clock,
-      color: summary.mttrMinutes > 0 ? 'text-indigo-400' : 'text-slate-400',
-      border: 'border-slate-800',
-      bg: 'bg-slate-900/60',
+      valueColor: 'text-foreground',
+      iconColor: 'text-primary',
     },
     {
       label: 'Total Deployments',
       value: summary.totalDeployments,
-      subValue: summary.totalDeployments > 0 ? `${summary.failedDeployments} Failures logged` : 'No deployments logged',
+      subValue: summary.totalDeployments > 0 ? `${summary.failedDeployments} failures logged` : 'No deployments logged',
       icon: Rocket,
-      color: summary.totalDeployments > 0 ? 'text-cyan-400' : 'text-slate-400',
-      border: 'border-slate-800',
-      bg: 'bg-slate-900/60',
+      valueColor: 'text-foreground',
+      iconColor: 'text-foreground-muted',
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       {metrics.map((m) => {
         const Icon = m.icon;
         return (
-          <Card key={m.label} className={`border ${m.border} ${m.bg}`}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-400">{m.label}</span>
-                <Icon className={`h-4 w-4 ${m.color}`} />
+          <Card key={m.label} className="border border-border bg-card">
+            <CardContent className="p-3.5 sm:p-4">
+              <div className="flex items-center justify-between text-xs text-foreground-secondary">
+                <span className="font-medium">{m.label}</span>
+                <Icon className={`h-3.5 w-3.5 ${m.iconColor}`} />
               </div>
-              <div className={`mt-2 text-2xl font-bold font-mono tracking-tight ${m.color}`}>
+              <div className={`mt-1.5 text-2xl font-bold font-mono tabular-nums ${m.valueColor}`}>
                 {m.value}
               </div>
-              <div className="mt-1 text-[11px] text-slate-500 truncate">{m.subValue}</div>
+              <div className="mt-1 text-[11px] text-foreground-muted truncate">{m.subValue}</div>
             </CardContent>
           </Card>
         );
