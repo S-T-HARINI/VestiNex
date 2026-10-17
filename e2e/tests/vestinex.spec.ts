@@ -25,6 +25,7 @@ test.describe('VestiNex Platform E2E Tests', () => {
     await loginAsAdmin(page);
 
     // Click on Checkout & Payment Engine project
+    await expect(page.getByText('Checkout & Payment Engine').first()).toBeVisible({ timeout: 15000 });
     await page.getByText('Checkout & Payment Engine').first().click();
     await page.waitForURL(/.*\/projects\/.+/);
 
@@ -71,8 +72,19 @@ test.describe('VestiNex Platform E2E Tests', () => {
     expect(optionTexts.some((text: string) => text.includes('Unassigned'))).toBe(true);
     expect(optionTexts.some((text: string) => text.includes('Alex Rivera') || text.includes('Sarah Chen'))).toBe(true);
 
-    // Verify Invite Member action is visible
-    await expect(page.getByRole('button', { name: /Invite Member/i }).first()).toBeVisible();
+    // Verify eligible project member count is visible
+    await expect(page.getByText(/\d+ eligible project member/i)).toBeVisible();
+
+    // Verify there is exactly one Invite Member action (no duplicates)
+    const inviteBtns = page.getByRole('button', { name: /Invite Member/i });
+    await expect(inviteBtns).toHaveCount(1);
+    await expect(inviteBtns.first()).toBeVisible();
+
+    // Verify Invite Member opens the invitation dialog
+    await inviteBtns.first().click();
+    await expect(page.getByText('Invite Member to Project Workspace')).toBeVisible();
+    await page.getByRole('button', { name: /Cancel/i }).click();
+    await expect(page.getByText('Invite Member to Project Workspace')).not.toBeVisible();
   });
 
   test('Unauthenticated access to protected routes redirects to /login', async ({ page }) => {

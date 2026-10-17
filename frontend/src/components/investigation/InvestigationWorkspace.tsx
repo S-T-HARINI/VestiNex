@@ -478,17 +478,7 @@ export function InvestigationWorkspace({ incident, onRefresh, users, projectId }
             </CardHeader>
             <CardContent className="space-y-3 text-xs">
               <div>
-                <div className="flex items-center justify-between">
-                  <label className="text-[10px] uppercase font-semibold text-foreground-muted">Assigned Lead SRE</label>
-                  <button
-                    type="button"
-                    onClick={openInviteModal}
-                    className="text-[10px] text-primary hover:underline font-medium inline-flex items-center gap-1"
-                  >
-                    <UserPlus className="h-3 w-3" />
-                    <span>Invite Member</span>
-                  </button>
-                </div>
+                <label className="text-[10px] uppercase font-semibold text-foreground-muted">Assigned Lead SRE</label>
 
                 {users.length === 0 ? (
                   <div className="mt-1.5 rounded border border-dashed border-border bg-card/40 p-2.5 text-center text-xs space-y-1">
@@ -521,7 +511,7 @@ export function InvestigationWorkspace({ incident, onRefresh, users, projectId }
                         </option>
                       ))}
                     </select>
-                    <div className="mt-1 flex items-center justify-between text-[10px] text-foreground-muted">
+                    <div className="mt-1.5 flex items-center justify-between text-[10px] text-foreground-muted">
                       <span>{users.length} eligible project {users.length === 1 ? 'member' : 'members'}</span>
                       <button
                         type="button"
@@ -529,7 +519,7 @@ export function InvestigationWorkspace({ incident, onRefresh, users, projectId }
                         className="text-primary hover:underline font-medium inline-flex items-center gap-1"
                       >
                         <UserPlus className="h-3 w-3" />
-                        <span>+ Invite Member</span>
+                        <span>Invite Member</span>
                       </button>
                     </div>
                   </>
