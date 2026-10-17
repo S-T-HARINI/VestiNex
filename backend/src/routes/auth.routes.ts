@@ -93,10 +93,11 @@ router.patch('/profile', authenticate, validate(updateProfileSchema), async (req
   }
 });
 
-// List all users (for assignment & membership pickers)
+// List users (for assignment & membership pickers)
 router.get('/users', authenticate, async (req: Request, res: Response, next) => {
   try {
-    const users = await authService.listUsers();
+    const excludeDemo = req.query.includeDemo !== 'true';
+    const users = await authService.listUsers({ excludeDemo });
     res.json({ success: true, users });
   } catch (err) {
     next(err);

@@ -796,4 +796,96 @@ describe('VestiNex Backend API Integration Tests', () => {
     expect(unassignRes.status).toBe(200);
     expect(unassignRes.body.incident.assignedToId).toBeNull();
   });
+
+  // 26. Genuine User Invitations: Exclude built-in demo identities from user suggestions & allow inviting genuine registered accounts
+  it('Excludes built-in demo identities from user suggestions and enables inviting genuine registered users to incident assignment', async () => {
+    const genuineEmail = `genuine_sre_${Date.now()}@example.com`;
+    const callerEmail = `caller_lead_${Date.now()}@example.com`;
+
+    // 1. Register genuine SRE user
+    const regRes = await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'Genuine SRE Teammate', email: genuineEmail, password: 'password123' });
+    expect(regRes.status).toBe(201);
+    const genuineUser = regRes.body.user;
+
+    // 2. Register project owner caller
+    const callerRes = await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'Project Lead Owner', email: callerEmail, password: 'password123' });
+    expect(callerRes.status).toBe(201);
+    const callerCookie = callerRes.headers['set-cookie'][0];
+
+    // 3. GET /api/auth/users must return genuine registered user and NEVER return demo accounts
+    const usersRes = await request(app)
+      .get('/api/auth/users')
+      .set('Cookie', callerCookie);
+
+    expect(usersRes.status).toBe(200);
+    expect(usersRes.body.success).toBe(true);
+    const returnedUsers = usersRes.body.users;
+
+    // Genuine user must be present
+    expect(returnedUsers.some((u: any) => u.email === genuineEmail)).toBe(true);
+
+    // Built-in demo accounts must NOT be present
+    const demoEmails = ['admin@vestinex.io', 'dev@vestinex.io', 'lead@vestinex.io', 'viewer@vestinex.io'];
+    const demoIds = ['usr_admin_001', 'usr_dev_002', 'usr_lead_003', 'usr_viewer_004'];
+
+    for (const demoEmail of demoEmails) {
+      expect(returnedUsers.some((u: any) => u.email.toLowerCase() === demoEmail)).toBe(false);
+    }
+    for (const demoId of demoIds) {
+      expect(returnedUsers.some((u: any) => u.id === demoId)).toBe(false);
+    }
+
+    // 4. Project Lead creates a project
+    const projRes = await request(app)
+      .post('/api/projects')
+      .set('Cookie', callerCookie)
+      .send({
+        name: 'Genuine Teammate Monitoring Project',
+        description: 'Testing genuine user invitation to incident assignment',
+        environment: 'PRODUCTION',
+      });
+    const projId = projRes.body.project.id;
+
+    // 5. Genuine SRE is not initially in project members
+    const membersBefore = await request(app)
+      .get(`/api/projects/${projId}/members`)
+      .set('Cookie', callerCookie);
+    expect(membersBefore.body.members.some((m: any) => m.user.id === genuineUser.id)).toBe(false);
+
+    // 6. Explicitly invite genuine SRE to project workspace
+    const inviteRes = await request(app)
+      .post(`/api/projects/${projId}/members`)
+      .set('Cookie', callerCookie)
+      .send({ email: genuineEmail, role: 'DEVELOPER' });
+    expect(inviteRes.status).toBe(201);
+    expect(inviteRes.body.member.user.email).toBe(genuineEmail);
+
+    // 7. Verify genuine SRE is now a project member and can be assigned
+    const membersAfter = await request(app)
+      .get(`/api/projects/${projId}/members`)
+      .set('Cookie', callerCookie);
+    expect(membersAfter.body.members.some((m: any) => m.user.id === genuineUser.id)).toBe(true);
+
+    // 8. Create incident and assign to genuine SRE
+    const incRes = await request(app)
+      .post(`/api/projects/${projId}/incidents`)
+      .set('Cookie', callerCookie)
+      .send({
+        title: 'High Latency on API Ingestion',
+        severity: 'HIGH',
+        assignedToId: genuineUser.id,
+      });
+    expect(incRes.status).toBe(201);
+
+    // Verify assignment persisted
+    const getInc = await request(app)
+      .get(`/api/incidents/${incRes.body.incident.id}`)
+      .set('Cookie', callerCookie);
+    expect(getInc.body.incident.assignedToId).toBe(genuineUser.id);
+    expect(getInc.body.incident.assignedTo.email).toBe(genuineEmail);
+  });
 });

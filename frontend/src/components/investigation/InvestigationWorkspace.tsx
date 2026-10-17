@@ -62,8 +62,15 @@ export function InvestigationWorkspace({ incident, onRefresh, users, projectId }
       const res = await api.getUsers();
       if (res?.users) {
         const currentMemberIds = new Set(users.map((u) => u.id));
+        const demoEmails = new Set(['admin@vestinex.io', 'dev@vestinex.io', 'lead@vestinex.io', 'viewer@vestinex.io']);
+        const demoIds = new Set(['usr_admin_001', 'usr_dev_002', 'usr_lead_003', 'usr_viewer_004']);
         const filtered = res.users.filter(
-          (u: any) => !currentMemberIds.has(u.id) && !u.email.includes('@vestinex-test.io')
+          (u: any) =>
+            !currentMemberIds.has(u.id) &&
+            !demoIds.has(u.id) &&
+            !demoEmails.has(u.email?.toLowerCase()) &&
+            !u.email?.toLowerCase().endsWith('@vestinex.io') &&
+            !u.email?.toLowerCase().endsWith('@vestinex-test.io')
         );
         setRegisteredCandidates(filtered);
       }
@@ -733,6 +740,8 @@ export function InvestigationWorkspace({ incident, onRefresh, users, projectId }
                 <label className="text-[11px] font-medium text-foreground">Registered User Email *</label>
                 <Input
                   type="email"
+                  name="vestinex_invite_email"
+                  autoComplete="off"
                   list="registered-candidates-list"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}

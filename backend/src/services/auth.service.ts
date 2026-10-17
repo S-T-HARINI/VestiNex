@@ -125,10 +125,18 @@ export class AuthService {
     };
   }
 
-  async listUsers(): Promise<Omit<User, 'passwordHash'>[]> {
-    const rows = await pgDb.query<any>(
-      'SELECT id, email, name, role, avatar_url, created_at, updated_at FROM users ORDER BY name ASC;'
-    );
+  async listUsers(options?: { excludeDemo?: boolean }): Promise<Omit<User, 'passwordHash'>[]> {
+    const shouldExcludeDemo = options?.excludeDemo !== false;
+    let sql = 'SELECT id, email, name, role, avatar_url, created_at, updated_at FROM users';
+
+    if (shouldExcludeDemo) {
+      sql += ` WHERE id NOT IN ('usr_admin_001', 'usr_dev_002', 'usr_lead_003', 'usr_viewer_004')
+               AND lower(email) NOT LIKE '%@vestinex.io'
+               AND lower(email) NOT LIKE '%@vestinex-test.io'`;
+    }
+
+    sql += ' ORDER BY name ASC;';
+    const rows = await pgDb.query<any>(sql);
     return rows.map((u) => ({
       id: u.id,
       email: u.email,

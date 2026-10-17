@@ -265,9 +265,11 @@ export default function ProjectSettingsPage() {
               <div className="flex flex-col sm:flex-row gap-2">
                 <Input
                   type="email"
+                  name="project_member_invite_email"
+                  autoComplete="off"
                   value={newMemberEmail}
                   onChange={(e) => setNewMemberEmail(e.target.value)}
-                  placeholder="engineer@vestinex.io (must be registered user)"
+                  placeholder="colleague@example.com (must be registered user)"
                   required
                   className="text-xs flex-1"
                 />
